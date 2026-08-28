@@ -1,0 +1,3 @@
+@echo off
+title Gerador de Roteiros Padronizados - Atualizando...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0_atualizar.ps1"

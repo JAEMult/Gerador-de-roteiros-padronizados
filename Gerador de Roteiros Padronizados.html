@@ -1,0 +1,3371 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Roteiros Padronizados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg-elevated: #151822;
+    --bg-elevated-2: #1c202c;
+    --border-color: #2a2f3d;
+    --text-primary: #eef0f4;
+    --text-secondary: #9aa1b1;
+    --text-muted: #6b7280;
+    --accent: #6d5ef8;
+    --accent-hover: #7f6ffc;
+    --accent-soft: rgba(109, 94, 248, 0.14);
+    --accent-text: #ffffff;
+    --success: #22c55e;
+    --error: #f87171;
+    --warning: #fbbf24;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    --font-main: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-mono: 'Consolas', 'Courier New', monospace;
+  }
+
+  [data-theme="light"] {
+    --bg: #f4f5f8;
+    --bg-elevated: #ffffff;
+    --bg-elevated-2: #f0f1f5;
+    --border-color: #dfe2e8;
+    --text-primary: #1a1d24;
+    --text-secondary: #565c6b;
+    --text-muted: #8a90a0;
+    --accent: #5b4bf0;
+    --accent-hover: #4a3ce0;
+    --accent-soft: rgba(91, 75, 240, 0.08);
+    --accent-text: #ffffff;
+    --success: #16a34a;
+    --error: #dc2626;
+    --warning: #d97706;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    transition: background .2s ease, color .2s ease;
+  }
+
+  body {
+    padding: 32px 20px 80px 20px;
+  }
+
+  .container {
+    max-width: 1360px;
+    margin: 0 auto;
+  }
+
+  .layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 20px;
+  }
+
+  .main-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .queue-sidebar {
+    width: 280px;
+  }
+
+  .queue-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    background: var(--bg-elevated-2);
+    cursor: default;
+    font-size: 12.5px;
+  }
+
+  .queue-item.clickable {
+    cursor: pointer;
+  }
+
+  .queue-item.clickable:hover {
+    border-color: var(--accent);
+  }
+
+  .queue-item.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .queue-item-status {
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+
+  .queue-item-select {
+    flex-shrink: 0;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .queue-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+  }
+
+  .queue-item.status-processando .queue-item-name {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .queue-item.status-erro .queue-item-name {
+    color: var(--error);
+  }
+
+  .queue-item-dl {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  .queue-item-dl:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .queue-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .queue-controls .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .queue-controls .btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+
+  .queue-controls-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+    border: none;
+  }
+
+  header.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    gap: 16px;
+  }
+
+  header.app-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+  }
+
+  header.app-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    max-width: 560px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  #themeToggleBtn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  #themeToggleBtn:hover {
+    border-color: var(--accent);
+  }
+
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .card h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    margin: 0 0 18px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card h2 .step-num {
+    background: var(--accent);
+    color: var(--accent-text);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .field-full-width {
+    width: 100%;
+  }
+
+  label.field-caption {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  select, input[type="password"], input[type="text"] {
+    font-family: var(--font-main);
+    background: var(--bg-elevated-2);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+  }
+
+  select:focus, input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .api-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .api-row select {
+    min-width: 200px;
+  }
+
+  .model-row {
+    margin-top: 12px;
+  }
+
+  .model-row input {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .alt-keys-block {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .alt-key-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    background: var(--bg-elevated-2);
+  }
+
+  .alt-key-row span {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+
+  .alt-key-add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .alt-key-add-row input {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .api-row input[type="password"] {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .btn {
+    font-family: var(--font-main);
+    border: none;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+    white-space: nowrap;
+  }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+
+  .btn-accent:hover {
+    background: var(--accent-hover);
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .btn-outline:hover {
+    border-color: var(--error);
+    color: var(--error);
+  }
+
+  .key-status {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 10px;
+  }
+
+  .key-status.key-status-ok {
+    color: var(--success);
+  }
+
+  .key-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  .key-hint a {
+    color: var(--accent);
+  }
+
+  /* Campos padronizados */
+  .field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+    background: var(--bg-elevated-2);
+  }
+
+  .field-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .field-id-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg);
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    width: fit-content;
+  }
+
+  .field-label-input {
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    width: 100%;
+  }
+
+  .field-desc-input {
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-family: var(--font-main);
+    resize: vertical;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .btn-icon-remove {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .btn-icon-remove:hover {
+    border-color: var(--error);
+    color: var(--error);
+  }
+
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--border-color);
+    transition: .2s;
+    border-radius: 24px;
+  }
+
+  .switch .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #ffffff;
+    transition: .2s;
+    border-radius: 50%;
+  }
+
+  .switch input:checked + .slider {
+    background: var(--accent);
+  }
+
+  .switch input:checked + .slider:before {
+    transform: translateX(18px);
+  }
+
+  .add-field-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .add-field-form input {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  /* Sidebar de campos: versao compacta/discreta */
+  .fields-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .fields-card-header h2 {
+    margin: 0;
+    font-size: 12.5px;
+  }
+
+  .ai-config-card .fields-card-header h2 {
+    font-size: 14px;
+  }
+
+  .ai-config-card .fields-card-header {
+    margin-bottom: 0;
+  }
+
+  .ai-config-card #aiConfigBody {
+    margin-top: 20px;
+  }
+
+  .fields-count-badge {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-left: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .chevron-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .sidebar .card {
+    padding: 18px;
+  }
+
+  .sidebar .field-row {
+    padding: 10px;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .sidebar .field-label-input {
+    font-size: 12.5px;
+    padding: 6px 8px;
+  }
+
+  .sidebar .field-desc-input {
+    font-size: 11.5px;
+    padding: 6px 8px;
+    min-height: 36px;
+  }
+
+  .sidebar .field-id-badge {
+    font-size: 10px;
+  }
+
+  .field-no-lang-split-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-top: 2px;
+  }
+
+  .field-no-lang-split-row input {
+    margin: 2px 0 0 0;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .sidebar .btn-icon-remove {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .sidebar .add-field-form {
+    flex-direction: column;
+  }
+
+  .sidebar .add-field-form input,
+  .sidebar .add-field-form button {
+    width: 100%;
+  }
+
+  /* Idiomas */
+  .lang-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .lang-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-elevated-2);
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+
+  .lang-chip input {
+    margin: 0;
+    accent-color: var(--accent);
+  }
+
+  .lang-chip.checked {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .hint-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 6px 0 0 0;
+    line-height: 1.5;
+  }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+    background: var(--bg-elevated-2);
+  }
+
+  .drop-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .drop-zone .drop-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+
+  .drop-zone .drop-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .drop-zone .drop-sub {
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .file-list {
+    margin-top: 16px;
+  }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    background: var(--bg-elevated-2);
+  }
+
+  .file-name {
+    flex: 1;
+    font-size: 13.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .file-size {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+
+  .file-list-empty {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 8px 2px;
+  }
+
+  .blank-doc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+  }
+
+  .blank-doc-row .hint-text {
+    margin: 0;
+  }
+
+  .blank-doc-row .btn {
+    flex-shrink: 0;
+  }
+
+  /* Botão principal */
+  .process-wrap {
+    text-align: center;
+    margin: 28px 0;
+  }
+
+  #processBtn {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    padding: 16px 40px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: background .15s ease, opacity .15s ease;
+    box-shadow: var(--shadow);
+  }
+
+  #processBtn:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  #processBtn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+  }
+
+  /* Progresso */
+  .progress-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+
+  #progressStepText {
+    color: var(--text-secondary);
+  }
+
+  #progressPercentText {
+    color: var(--accent);
+    font-weight: 700;
+    font-family: var(--font-mono);
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 10px;
+    background: var(--bg-elevated-2);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    margin-bottom: 18px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+    transition: width .3s ease;
+  }
+
+  .log-terminal {
+    background: #0a0c10;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    height: 220px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+
+  .log-line {
+    color: #c9d1d9;
+    margin-bottom: 4px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .log-line.log-success {
+    color: #3fb950;
+  }
+
+  .log-line.log-error {
+    color: #f85149;
+  }
+
+  .log-line.log-warn {
+    color: #d29922;
+  }
+
+  /* Saida / tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 18px;
+  }
+
+  .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-family: var(--font-main);
+  }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .edit-field-block {
+    margin-bottom: 18px;
+  }
+
+  .edit-field-label {
+    display: block;
+    font-weight: 600;
+    font-size: 12.5px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .edit-field-lang-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 8px 0 4px 0;
+  }
+
+  .edit-field-lang-label:first-of-type {
+    margin-top: 0;
+  }
+
+  .edit-field-textarea-lang {
+    margin-bottom: 4px;
+  }
+
+  .edit-field-textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-elevated-2);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: 14px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  #previewPanel pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--bg-elevated-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 18px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    max-height: 600px;
+    overflow-y: auto;
+    margin: 0;
+  }
+
+  .download-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  footer.app-footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 30px;
+    line-height: 1.6;
+  }
+
+  #versionStamp {
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    opacity: .7;
+  }
+
+  @media (max-width: 1150px) {
+    .layout {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      position: static;
+    }
+  }
+
+  @media (max-width: 640px) {
+    header.app-header {
+      flex-direction: column;
+    }
+
+    .header-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .header-actions .btn,
+    .header-actions #themeToggleBtn {
+      flex: 1 1 auto;
+      white-space: normal;
+    }
+
+    .field-row {
+      flex-direction: column;
+    }
+
+    .switch {
+      margin-top: 0;
+    }
+
+    .api-row select, .api-row input[type="password"] {
+      width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="app-header">
+    <div>
+      <h1>Gerador de Roteiros Padronizados</h1>
+      <p>Envie planilhas ou arquivos de texto e deixe uma IA extrair narração, prompts e demais campos sempre no mesmo formato.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-accent" id="githubBackupBtn" type="button">💾 Salvar Backup no GitHub</button>
+      <button id="themeToggleBtn" type="button">Tema</button>
+    </div>
+  </header>
+
+  <div class="card ai-config-card">
+    <div class="fields-card-header" id="githubConfigHeader">
+      <h2>🐙 BACKUP NO GITHUB <span class="fields-count-badge" id="githubConfigSummary"></span></h2>
+      <button class="chevron-btn" id="githubConfigCollapseBtn" type="button" aria-expanded="true">▾</button>
+    </div>
+    <div id="githubConfigBody">
+      <p class="field-caption">
+        Cole aqui seu token do GitHub (permissão apenas de leitura/escrita no repositório
+        <strong>Gerador-de-roteiros-padronizados</strong>) para poder usar o botão "Salvar Backup no GitHub" acima.
+        O token fica salvo só neste navegador, nunca é enviado a nenhum outro lugar.
+      </p>
+      <div class="api-row">
+        <input type="password" id="githubTokenInput" class="field-full-width" placeholder="Cole seu token do GitHub aqui (github_pat_...)">
+        <button class="btn btn-accent" id="saveGithubTokenBtn" type="button">Salvar token</button>
+        <button class="btn btn-outline" id="clearGithubTokenBtn" type="button">Limpar token</button>
+      </div>
+      <p class="field-caption" id="githubBackupStatusEl"></p>
+    </div>
+  </div>
+
+  <div class="card ai-config-card">
+    <div class="fields-card-header" id="aiConfigHeader">
+      <h2>⚙ CONFIGURAÇÃO DA IA <span class="fields-count-badge" id="aiConfigSummary"></span></h2>
+      <button class="chevron-btn" id="aiConfigCollapseBtn" type="button" aria-expanded="true">▾</button>
+    </div>
+    <div id="aiConfigBody">
+      <div class="api-row">
+        <select id="providerSelect">
+          <option value="gemini">Gemini (Google)</option>
+          <option value="groq">Groq</option>
+        </select>
+        <input type="password" id="apiKeyInput" placeholder="Cole sua chave de API aqui">
+        <button class="btn btn-accent" id="saveKeyBtn" type="button">Salvar chave</button>
+        <button class="btn btn-outline" id="clearKeyBtn" type="button">Limpar chave</button>
+      </div>
+      <div class="model-row">
+        <label class="field-caption" for="modelInput">Modelo (edite se a IA parar de aceitar o atual)</label>
+        <input type="text" id="modelInput" class="field-full-width" placeholder="ID do modelo">
+      </div>
+      <span class="key-status" id="keyStatusEl">Nenhuma chave salva.</span>
+      <span class="key-status" id="bothKeysStatusEl"></span>
+
+      <div class="alt-keys-block">
+        <label class="field-caption">Chaves alternativas (usadas automaticamente se a cota da principal acabar)</label>
+        <div id="altKeysList"></div>
+        <div class="alt-key-add-row">
+          <input type="password" id="newAltKeyInput" class="field-full-width" placeholder="Cole outra chave de API aqui">
+          <button class="btn btn-outline" id="addAltKeyBtn" type="button">+ Adicionar chave alternativa</button>
+        </div>
+      </div>
+      <div class="key-hint">
+        Sua chave fica salva apenas neste navegador (localStorage) e é usada somente para chamar a API do provedor escolhido. A última IA, chave e modelo usados ficam salvos como padrão.
+        Chave grátis do Gemini: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> —
+        Chave grátis do Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>
+      </div>
+      <p class="hint-text">Documentos grandes ou com vários idiomas costumam ultrapassar o limite gratuito do Groq (12.000 tokens/minuto). Para esses casos, prefira o Gemini, que tem um limite bem maior. Se a IA recusar o modelo por estar desatualizado, confira o nome atual em <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener noreferrer">ai.google.dev/gemini-api/docs/models</a> (Gemini) ou <a href="https://console.groq.com/docs/models" target="_blank" rel="noopener noreferrer">console.groq.com/docs/models</a> (Groq) e cole o nome certo no campo Modelo acima.</p>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- Sidebar: Campos do roteiro -->
+    <aside class="sidebar">
+      <div class="card">
+        <div class="fields-card-header" id="fieldsCardHeader">
+          <h2>CAMPOS DO ROTEIRO <span class="fields-count-badge" id="fieldsCountBadge"></span></h2>
+          <button class="chevron-btn" id="fieldsCollapseBtn" type="button" aria-expanded="true">▾</button>
+        </div>
+        <div id="fieldsCardBody">
+          <div id="fieldsContainer"></div>
+          <div class="add-field-form">
+            <input type="text" id="newFieldLabelInput" placeholder="Nome do novo campo (ex: Trilha Sonora)">
+            <input type="text" id="newFieldDescInput" placeholder="Descrição para a IA">
+            <button class="btn btn-accent" id="addFieldBtn" type="button">+ Adicionar campo</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-col">
+
+      <!-- 1. Arquivos de origem -->
+      <div class="card">
+        <h2><span class="step-num">1</span> Arquivos de Origem</h2>
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📄</div>
+          <div class="drop-title">Arraste e solte seus arquivos aqui</div>
+          <div class="drop-sub">ou clique para selecionar — .xlsx, .csv, .md, .txt</div>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".xlsx,.csv,.md,.txt" style="display:none;">
+        <div class="file-list" id="fileListEl"></div>
+        <div class="blank-doc-row">
+          <span class="hint-text">Não tem um documento de referência ainda?</span>
+          <button class="btn btn-outline" id="createBlankBtn" type="button">+ Criar documento em branco</button>
+        </div>
+      </div>
+
+      <!-- 2. Idiomas a extrair -->
+      <div class="card">
+        <h2><span class="step-num">2</span> Idiomas a Extrair</h2>
+        <div class="lang-row" id="langRow"></div>
+        <label class="field-caption" for="customLangInput">Outros idiomas (opcional, separados por vírgula)</label>
+        <input type="text" id="customLangInput" class="field-full-width" placeholder="ex: Italiano, Japonês">
+        <p class="hint-text">Se nenhum idioma for marcado, a IA extrai o conteúdo de todos os idiomas encontrados no documento. Marque mais de um para extrair vários ao mesmo tempo (a IA rotula cada trecho por idioma).</p>
+      </div>
+
+      <div class="process-wrap">
+        <button id="processBtn" type="button">GERAR ROTEIROS</button>
+      </div>
+
+      <!-- Progresso -->
+      <div class="card" id="progressCard" style="display:none;">
+        <h2>Progresso</h2>
+        <div class="progress-top-row">
+          <span id="progressStepText">Aguardando início...</span>
+          <span id="progressPercentText">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="log-terminal" id="logEl"></div>
+      </div>
+
+      <!-- Saida -->
+      <div class="card" id="outputSection" style="display:none;">
+        <h2>Resultado <span class="hint-text" id="resultViewingLabel" style="display:inline;margin:0 0 0 8px;"></span></h2>
+        <div class="tabs">
+          <button class="tab-btn active" id="tabEditBtn" type="button">Editar campos</button>
+          <button class="tab-btn" id="tabPreviewBtn" type="button">Pré-visualizar .md</button>
+        </div>
+        <div id="editPanel">
+          <div id="editFieldsContainer"></div>
+        </div>
+        <div id="previewPanel" style="display:none;">
+          <pre id="previewPre"></pre>
+        </div>
+        <div class="model-row">
+          <label class="field-caption" for="outputFilenameInput">Nome do arquivo (sem extensão — o padrão vem do nome do documento de origem)</label>
+          <input type="text" id="outputFilenameInput" class="field-full-width" placeholder="roteiro_...">
+        </div>
+        <div class="download-row">
+          <button class="btn btn-accent" id="downloadMdBtn" type="button">Baixar .MD</button>
+          <button class="btn btn-outline" id="downloadTxtBtn" type="button">Baixar .TXT</button>
+        </div>
+      </div>
+
+      <footer class="app-footer">
+        <div>Gerador de Roteiros Padronizados — processamento 100% no navegador. Nenhum arquivo é enviado a servidores próprios.</div>
+        <div id="versionStamp">Versão do arquivo: 2026-08-14 00:15 — se você não vê esta data, recarregue a página (F5) para pegar a versão mais nova.</div>
+      </footer>
+
+    </div>
+
+    <!-- Fila de processamento -->
+    <aside class="sidebar queue-sidebar" id="queueSidebar" style="display:none;">
+      <div class="card">
+        <div class="fields-card-header" style="cursor:default;">
+          <h2>FILA DE PROCESSAMENTO <span class="fields-count-badge" id="queueCountBadge"></span></h2>
+        </div>
+        <div id="queueList"></div>
+        <div class="queue-controls">
+          <button class="btn btn-outline" id="queuePauseBtn" type="button" disabled>⏸ Pausar</button>
+          <button class="btn btn-accent" id="queuePendingBtn" type="button">⏭ Gerar pendentes</button>
+          <button class="btn btn-outline" id="queueRedoSelectedBtn" type="button" disabled>🔄 Refazer selecionados (0)</button>
+          <hr class="queue-controls-divider">
+          <button class="btn btn-accent" id="queueDownloadAllBtn" type="button" disabled>⬇ Baixar todos (.md)</button>
+        </div>
+        <p class="hint-text">Os arquivos são processados um de cada vez. Se um der erro, a fila pausa automaticamente — corrija (ex: troque de chave) e clique em Retomar. Marque a caixinha dos itens concluídos que quiser refazer e clique em "Refazer selecionados". "Gerar pendentes" processa só os arquivos novos, sem repetir os já feitos. Clique num item concluído para ver/editar o resultado dele.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Estado ---------- */
+
+  var DEFAULT_FIELDS = [
+    { id: 'titulo', label: 'Título', desc: 'Copie LITERALMENTE o texto que aparece sob um cabeçalho chamado "Título"/"Title" dentro da seção do idioma correto — na íntegra, sem cortar, resumir ou encurtar, incluindo subtítulos e separadores (hífen, "|", "·") até o fim da linha. NÃO use campos de metadados gerais do topo do documento (ex: "Série", nome do arquivo) mesmo que pareçam parecidos — não são o título.', active: true },
+    { id: 'descricao', label: 'Descrição', desc: 'Extraia a(s) opção(ões) de descrição do vídeo (para a caixa de descrição do YouTube/redes sociais) como um ARRAY de strings — um elemento por opção encontrada no documento (ex: "Opção A", "Opção B"...); se houver só uma descrição, retorne um array com um único elemento mesmo assim. Em CADA elemento do array, cole ao final o texto de HASHTAGS do documento (procure uma seção ou linha chamada "Hashtags", separada ou logo após a descrição) — as mesmas hashtags em todos os elementos, com uma linha em branco separando a descrição das hashtags. Copie tudo literalmente, sem resumir. Se o documento não tiver hashtags, não invente nenhuma. Considere apenas os idiomas selecionados.', active: true },
+    { id: 'prompt_personagens', label: 'Prompt de Personagens', desc: 'Extraia os prompts de referência visual de personagens (ex: "character model sheet", "anchor prompt", ficha com idade/aparência/roupa), copiados literalmente, um bloco por personagem incluindo o nome dele. Se o documento NÃO tiver nenhuma seção/tabela específica de personagens, retorne string vazia — NUNCA componha um prompt de personagem a partir de outras descrições (thumbnail, cenas, etc.).', active: true, noLangSplit: true, singleLine: true },
+    { id: 'narracao', label: 'Narração', desc: 'Copie LITERALMENTE o texto INTEGRAL de narração/locução (voz off / TTS) na ordem correta das cenas ou blocos, sem resumir, preservando marcações de performance entre colchetes como [empathetic], [thoughtful], [whispering] quando existirem. Considere apenas os idiomas selecionados; se mais de um, separe e rotule claramente o texto de cada idioma.', active: true },
+    { id: 'texto_tela', label: 'Texto na Tela', desc: 'Extraia o TEXTO QUE APARECE ESCRITO NA TELA durante o vídeo — pode estar rotulado de formas diferentes conforme o documento (ex: "Texto na Tela", "On-Screen Text", "Legenda", "Caption", "Texto de Tela", ou numa coluna separada por cena) — geralmente uma frase curta e direta por cena/momento, DIFERENTE da narração falada (que é o texto completo da locução, em outro campo). Extraia como um ARRAY de strings, um elemento por cena/momento, na ordem em que aparecem no documento, copiado literalmente (não resuma nem reescreva, não misture com a narração mesmo que apareçam lado a lado). Se o documento não tiver esse texto de tela separado da narração, retorne um array vazio — não invente. Considere apenas os idiomas selecionados.', active: true, listMode: 'numbered' },
+    { id: 'prompt_imagem_video', label: 'Prompt de Imagem/Vídeo', desc: 'Extraia TODOS os prompts de geração de conteúdo visual por IA para cada cena — sejam eles para IMAGEM ESTÁTICA (uma única imagem) ou para VÍDEO (clipe com movimento de câmera/ação/duração, ex: prompts para Veo, Runway, Kling) — como um ARRAY de strings, um elemento por prompt, copiado literalmente e por inteiro (não resuma), na ordem em que aparecem no documento. NÃO separe por tipo — junte imagem e vídeo na mesma lista, na ordem do documento. NÃO inclua nomes de arquivos de vídeo/imagem de banco de estoque já prontos (ex: "arquivo.mp4") — isso não é prompt de geração por IA. Se não houver nenhum prompt de geração visual no documento, retorne um array vazio.', active: true, noLangSplit: true, listMode: 'numbered', singleLine: true },
+    { id: 'prompt_thumbnail', label: 'Prompt de Thumbnail', desc: 'Copie LITERALMENTE o(s) prompt(s) de geração de imagem da thumbnail/miniatura por inteiro, incluindo todos os detalhes técnicos (proporção, zonas de texto, paleta de cores, overlay) — não resuma em uma frase curta. Se houver um prompt por idioma, inclua apenas os dos idiomas selecionados, rotulando claramente qual prompt pertence a qual idioma.', active: true, singleLine: true },
+    { id: 'youtube_tags', label: 'YouTube Tags', desc: 'Lista COMPLETA de tags/palavras-chave de SEO do YouTube exatamente como aparecem no documento, sem cortar a quantidade e sem inventar novas. Considere apenas os idiomas selecionados; se mais de um, agrupe/rotule por idioma dentro da lista.', active: true }
+  ];
+
+  var fields = DEFAULT_FIELDS.map(function (f) { return { id: f.id, label: f.label, desc: f.desc, active: f.active, noLangSplit: !!f.noLangSplit, listMode: f.listMode || 'none', singleLine: !!f.singleLine }; });
+  var uploadedFiles = [];
+  var generatedData = {};
+
+  var queueJobs = [];
+  var queuePaused = false;
+  var queueActive = false;
+  var activeResultJobId = null;
+
+  /* ---------- Elementos ---------- */
+
+  var themeToggleBtn = document.getElementById('themeToggleBtn');
+  var providerSelect = document.getElementById('providerSelect');
+  var apiKeyInput = document.getElementById('apiKeyInput');
+  var modelInput = document.getElementById('modelInput');
+  var saveKeyBtn = document.getElementById('saveKeyBtn');
+  var clearKeyBtn = document.getElementById('clearKeyBtn');
+  var keyStatusEl = document.getElementById('keyStatusEl');
+  var bothKeysStatusEl = document.getElementById('bothKeysStatusEl');
+  var altKeysList = document.getElementById('altKeysList');
+  var newAltKeyInput = document.getElementById('newAltKeyInput');
+  var addAltKeyBtn = document.getElementById('addAltKeyBtn');
+
+  var fieldsContainer = document.getElementById('fieldsContainer');
+  var fieldsCountBadge = document.getElementById('fieldsCountBadge');
+  var fieldsCardHeader = document.getElementById('fieldsCardHeader');
+  var fieldsCardBody = document.getElementById('fieldsCardBody');
+  var fieldsCollapseBtn = document.getElementById('fieldsCollapseBtn');
+
+  var aiConfigHeader = document.getElementById('aiConfigHeader');
+  var aiConfigBody = document.getElementById('aiConfigBody');
+  var aiConfigCollapseBtn = document.getElementById('aiConfigCollapseBtn');
+  var aiConfigSummary = document.getElementById('aiConfigSummary');
+
+  var githubBackupBtn = document.getElementById('githubBackupBtn');
+  var githubConfigHeader = document.getElementById('githubConfigHeader');
+  var githubConfigBody = document.getElementById('githubConfigBody');
+  var githubConfigCollapseBtn = document.getElementById('githubConfigCollapseBtn');
+  var githubConfigSummary = document.getElementById('githubConfigSummary');
+  var githubTokenInput = document.getElementById('githubTokenInput');
+  var saveGithubTokenBtn = document.getElementById('saveGithubTokenBtn');
+  var clearGithubTokenBtn = document.getElementById('clearGithubTokenBtn');
+  var githubBackupStatusEl = document.getElementById('githubBackupStatusEl');
+  var newFieldLabelInput = document.getElementById('newFieldLabelInput');
+  var newFieldDescInput = document.getElementById('newFieldDescInput');
+  var addFieldBtn = document.getElementById('addFieldBtn');
+
+  var langRow = document.getElementById('langRow');
+  var customLangInput = document.getElementById('customLangInput');
+
+  var dropZone = document.getElementById('dropZone');
+  var fileInput = document.getElementById('fileInput');
+  var fileListEl = document.getElementById('fileListEl');
+  var createBlankBtn = document.getElementById('createBlankBtn');
+
+  var processBtn = document.getElementById('processBtn');
+
+  var progressCard = document.getElementById('progressCard');
+  var progressStepText = document.getElementById('progressStepText');
+  var progressPercentText = document.getElementById('progressPercentText');
+  var progressFill = document.getElementById('progressFill');
+  var logEl = document.getElementById('logEl');
+
+  var outputSection = document.getElementById('outputSection');
+  var tabEditBtn = document.getElementById('tabEditBtn');
+  var tabPreviewBtn = document.getElementById('tabPreviewBtn');
+  var editPanel = document.getElementById('editPanel');
+  var previewPanel = document.getElementById('previewPanel');
+  var editFieldsContainer = document.getElementById('editFieldsContainer');
+  var previewPre = document.getElementById('previewPre');
+  var downloadMdBtn = document.getElementById('downloadMdBtn');
+  var downloadTxtBtn = document.getElementById('downloadTxtBtn');
+  var resultViewingLabel = document.getElementById('resultViewingLabel');
+  var outputFilenameInput = document.getElementById('outputFilenameInput');
+
+  var queueSidebar = document.getElementById('queueSidebar');
+  var queueList = document.getElementById('queueList');
+  var queueCountBadge = document.getElementById('queueCountBadge');
+  var queuePauseBtn = document.getElementById('queuePauseBtn');
+  var queuePendingBtn = document.getElementById('queuePendingBtn');
+  var queueRedoSelectedBtn = document.getElementById('queueRedoSelectedBtn');
+  var queueDownloadAllBtn = document.getElementById('queueDownloadAllBtn');
+
+  /* ---------- Tema ---------- */
+
+  var THEME_KEY = 'roteiro_theme';
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.textContent = theme === 'dark' ? '☀️ Tema Claro' : '🌙 Tema Escuro';
+  }
+
+  themeToggleBtn.addEventListener('click', function () {
+    var current = document.documentElement.getAttribute('data-theme');
+    var next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem(THEME_KEY, next);
+  });
+
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+  /* ---------- Chaves de API ---------- */
+
+  var LAST_PROVIDER_KEY = 'roteiro_last_provider';
+  var DEFAULT_MODELS = { gemini: 'gemini-flash-lite-latest', groq: 'llama-3.3-70b-versatile' };
+
+  function loadKeyForProvider() {
+    var provider = providerSelect.value;
+    var saved = localStorage.getItem('roteiro_key_' + provider) || '';
+    apiKeyInput.value = saved;
+    modelInput.value = localStorage.getItem('roteiro_model_' + provider) || DEFAULT_MODELS[provider];
+    if (saved) {
+      keyStatusEl.textContent = 'Chave salva localmente para ' + (provider === 'gemini' ? 'Gemini' : 'Groq') + '.';
+      keyStatusEl.className = 'key-status key-status-ok';
+    } else {
+      keyStatusEl.textContent = 'Nenhuma chave salva para ' + (provider === 'gemini' ? 'Gemini' : 'Groq') + '.';
+      keyStatusEl.className = 'key-status';
+    }
+
+    var geminiAltCount = getAltKeys('gemini').length;
+    var groqAltCount = getAltKeys('groq').length;
+    var geminiSaved = !!localStorage.getItem('roteiro_key_gemini');
+    var groqSaved = !!localStorage.getItem('roteiro_key_groq');
+    bothKeysStatusEl.textContent = 'Gemini: ' + (geminiSaved ? '✓ chave salva' : '— sem chave') +
+      (geminiAltCount > 0 ? ' (+' + geminiAltCount + ' alt.)' : '') +
+      '   |   Groq: ' + (groqSaved ? '✓ chave salva' : '— sem chave') +
+      (groqAltCount > 0 ? ' (+' + groqAltCount + ' alt.)' : '');
+
+    renderAltKeys();
+    updateAiConfigSummary();
+  }
+
+  function updateAiConfigSummary() {
+    var provider = providerSelect.value;
+    var providerLabel = provider === 'gemini' ? 'Gemini' : 'Groq';
+    var saved = !!localStorage.getItem('roteiro_key_' + provider);
+    var model = modelInput.value.trim() || DEFAULT_MODELS[provider];
+    aiConfigSummary.textContent = providerLabel + ' · ' + (saved ? '✓ chave salva' : '⚠ sem chave') + ' · ' + model;
+  }
+
+  /* ---------- Chaves alternativas (rotação automática ao esgotar cota) ---------- */
+
+  function getAltKeys(provider) {
+    try {
+      var raw = localStorage.getItem('roteiro_alt_keys_' + provider);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveAltKeys(provider, keys) {
+    localStorage.setItem('roteiro_alt_keys_' + provider, JSON.stringify(keys));
+  }
+
+  function maskKey(key) {
+    if (key.length <= 8) return '••••••••';
+    return key.slice(0, 4) + '••••••••' + key.slice(-4);
+  }
+
+  function renderAltKeys() {
+    var provider = providerSelect.value;
+    var keys = getAltKeys(provider);
+    altKeysList.innerHTML = '';
+    if (keys.length === 0) return;
+    keys.forEach(function (k, idx) {
+      var row = document.createElement('div');
+      row.className = 'alt-key-row';
+
+      var span = document.createElement('span');
+      span.textContent = (idx + 2) + '. ' + maskKey(k);
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-icon-remove';
+      removeBtn.type = 'button';
+      removeBtn.title = 'Remover chave alternativa';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', function () {
+        var current = getAltKeys(provider);
+        current.splice(idx, 1);
+        saveAltKeys(provider, current);
+        loadKeyForProvider();
+      });
+
+      row.appendChild(span);
+      row.appendChild(removeBtn);
+      altKeysList.appendChild(row);
+    });
+  }
+
+  function getAllApiKeys(provider) {
+    var primary = apiKeyInput.value.trim();
+    var all = primary ? [primary] : [];
+    getAltKeys(provider).forEach(function (k) {
+      if (all.indexOf(k) === -1) all.push(k);
+    });
+    return all;
+  }
+
+  addAltKeyBtn.addEventListener('click', function () {
+    var val = newAltKeyInput.value.trim();
+    if (!val) {
+      alert('Cole uma chave antes de adicionar.');
+      return;
+    }
+    var provider = providerSelect.value;
+    var keys = getAltKeys(provider);
+    if (keys.indexOf(val) !== -1 || val === apiKeyInput.value.trim()) {
+      alert('Essa chave já está salva.');
+      return;
+    }
+    keys.push(val);
+    saveAltKeys(provider, keys);
+    newAltKeyInput.value = '';
+    loadKeyForProvider();
+  });
+
+  providerSelect.addEventListener('change', function () {
+    localStorage.setItem(LAST_PROVIDER_KEY, providerSelect.value);
+    loadKeyForProvider();
+  });
+
+  saveKeyBtn.addEventListener('click', function () {
+    var provider = providerSelect.value;
+    var val = apiKeyInput.value.trim();
+    if (!val) {
+      alert('Digite uma chave antes de salvar.');
+      return;
+    }
+    localStorage.setItem('roteiro_key_' + provider, val);
+    localStorage.setItem('roteiro_model_' + provider, modelInput.value.trim() || DEFAULT_MODELS[provider]);
+    localStorage.setItem(LAST_PROVIDER_KEY, provider);
+    loadKeyForProvider();
+  });
+
+  clearKeyBtn.addEventListener('click', function () {
+    var provider = providerSelect.value;
+    localStorage.removeItem('roteiro_key_' + provider);
+    apiKeyInput.value = '';
+    loadKeyForProvider();
+  });
+
+  var lastProvider = localStorage.getItem(LAST_PROVIDER_KEY);
+  if (lastProvider === 'gemini' || lastProvider === 'groq') {
+    providerSelect.value = lastProvider;
+  }
+  loadKeyForProvider();
+
+  /* ---------- Campos configuráveis ---------- */
+
+  function slugify(str) {
+    var base = String(str)
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return base || 'campo';
+  }
+
+  function generateUniqueId(base) {
+    var id = base;
+    var counter = 2;
+    while (fields.some(function (f) { return f.id === id; })) {
+      id = base + '_' + counter;
+      counter++;
+    }
+    return id;
+  }
+
+  function renderFieldsConfig() {
+    fieldsContainer.innerHTML = '';
+    fields.forEach(function (f) {
+      var row = document.createElement('div');
+      row.className = 'field-row';
+      row.setAttribute('data-id', f.id);
+
+      var switchLabel = document.createElement('label');
+      switchLabel.className = 'switch';
+      var checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = f.active;
+      checkbox.addEventListener('change', function () {
+        f.active = checkbox.checked;
+      });
+      var slider = document.createElement('span');
+      slider.className = 'slider';
+      switchLabel.appendChild(checkbox);
+      switchLabel.appendChild(slider);
+
+      var info = document.createElement('div');
+      info.className = 'field-info';
+
+      var idBadge = document.createElement('span');
+      idBadge.className = 'field-id-badge';
+      idBadge.textContent = f.id;
+
+      var labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.className = 'field-label-input';
+      labelInput.value = f.label;
+      labelInput.addEventListener('input', function () {
+        f.label = labelInput.value;
+      });
+
+      var descInput = document.createElement('textarea');
+      descInput.className = 'field-desc-input';
+      descInput.rows = 2;
+      descInput.value = f.desc;
+      descInput.addEventListener('input', function () {
+        f.desc = descInput.value;
+      });
+
+      var noLangSplitRow = document.createElement('label');
+      noLangSplitRow.className = 'field-no-lang-split-row';
+      var noLangSplitCb = document.createElement('input');
+      noLangSplitCb.type = 'checkbox';
+      noLangSplitCb.checked = !!f.noLangSplit;
+      noLangSplitCb.addEventListener('change', function () {
+        f.noLangSplit = noLangSplitCb.checked;
+      });
+      var noLangSplitText = document.createElement('span');
+      noLangSplitText.textContent = 'Não dividir por idioma (ex: prompt de imagem, sempre em inglês)';
+      noLangSplitRow.appendChild(noLangSplitCb);
+      noLangSplitRow.appendChild(noLangSplitText);
+
+      var singleLineRow = document.createElement('label');
+      singleLineRow.className = 'field-no-lang-split-row';
+      var singleLineCb = document.createElement('input');
+      singleLineCb.type = 'checkbox';
+      singleLineCb.checked = !!f.singleLine;
+      singleLineCb.addEventListener('change', function () {
+        f.singleLine = singleLineCb.checked;
+      });
+      var singleLineText = document.createElement('span');
+      singleLineText.textContent = 'Sempre numa linha só (junta quebras de linha internas do prompt)';
+      singleLineRow.appendChild(singleLineCb);
+      singleLineRow.appendChild(singleLineText);
+
+      info.appendChild(idBadge);
+      info.appendChild(labelInput);
+      info.appendChild(descInput);
+      info.appendChild(noLangSplitRow);
+      info.appendChild(singleLineRow);
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-icon-remove';
+      removeBtn.type = 'button';
+      removeBtn.title = 'Remover campo';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', function () {
+        fields = fields.filter(function (x) { return x.id !== f.id; });
+        renderFieldsConfig();
+      });
+
+      row.appendChild(switchLabel);
+      row.appendChild(info);
+      row.appendChild(removeBtn);
+      fieldsContainer.appendChild(row);
+    });
+
+    var activeCount = fields.filter(function (f) { return f.active; }).length;
+    fieldsCountBadge.textContent = activeCount + '/' + fields.length + ' ativos';
+  }
+
+  var FIELDS_COLLAPSE_KEY = 'roteiro_fields_collapsed';
+
+  function applyFieldsCollapse(collapsed) {
+    fieldsCardBody.style.display = collapsed ? 'none' : 'block';
+    fieldsCollapseBtn.textContent = collapsed ? '▸' : '▾';
+    fieldsCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+
+  fieldsCardHeader.addEventListener('click', function () {
+    var collapsed = fieldsCardBody.style.display !== 'none';
+    applyFieldsCollapse(collapsed);
+    localStorage.setItem(FIELDS_COLLAPSE_KEY, collapsed ? '1' : '0');
+  });
+
+  applyFieldsCollapse(localStorage.getItem(FIELDS_COLLAPSE_KEY) === '1');
+
+  var AI_CONFIG_COLLAPSE_KEY = 'roteiro_ai_config_collapsed';
+
+  function applyAiConfigCollapse(collapsed) {
+    aiConfigBody.style.display = collapsed ? 'none' : 'block';
+    aiConfigCollapseBtn.textContent = collapsed ? '▸' : '▾';
+    aiConfigCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+
+  aiConfigHeader.addEventListener('click', function () {
+    var collapsed = aiConfigBody.style.display !== 'none';
+    applyAiConfigCollapse(collapsed);
+    localStorage.setItem(AI_CONFIG_COLLAPSE_KEY, collapsed ? '1' : '0');
+  });
+
+  // Padrão inteligente: se já existe alguma chave salva (uso de retorno), começa fechada
+  // (raramente precisa mexer); se é a primeira vez, começa aberta pra guiar a configuração.
+  var aiConfigStoredPref = localStorage.getItem(AI_CONFIG_COLLAPSE_KEY);
+  var aiConfigHasAnyKey = !!(localStorage.getItem('roteiro_key_gemini') || localStorage.getItem('roteiro_key_groq'));
+  applyAiConfigCollapse(aiConfigStoredPref !== null ? aiConfigStoredPref === '1' : aiConfigHasAnyKey);
+
+  /* ---------- Backup no GitHub ---------- */
+  // O botão "Salvar Backup no GitHub" grava o próprio arquivo do app no repositório
+  // https://github.com/JAEMult/Gerador-de-roteiros-padronizados (público), usando a API de
+  // Contents do GitHub direto do navegador (sem servidor/backend). Isso exige um token pessoal
+  // do GitHub — gerado pelo usuário, guardado só no localStorage deste navegador — porque GRAVAR
+  // no GitHub sempre exige prova de identidade, mesmo em repositório público.
+  var GITHUB_OWNER = 'JAEMult';
+  var GITHUB_REPO = 'Gerador-de-roteiros-padronizados';
+  var GITHUB_BRANCH = 'main';
+  var GITHUB_FILE_PATH = 'Gerador de Roteiros Padronizados.html';
+  var GITHUB_TOKEN_KEY = 'roteiro_github_token';
+  var GITHUB_LAST_BACKUP_KEY = 'roteiro_github_last_backup';
+  var GITHUB_CONFIG_COLLAPSE_KEY = 'roteiro_github_config_collapsed';
+
+  function applyGithubConfigCollapse(collapsed) {
+    githubConfigBody.style.display = collapsed ? 'none' : 'block';
+    githubConfigCollapseBtn.textContent = collapsed ? '▸' : '▾';
+    githubConfigCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+
+  function expandGithubConfig() {
+    applyGithubConfigCollapse(false);
+    localStorage.setItem(GITHUB_CONFIG_COLLAPSE_KEY, '0');
+  }
+
+  githubConfigHeader.addEventListener('click', function () {
+    var collapsed = githubConfigBody.style.display !== 'none';
+    applyGithubConfigCollapse(collapsed);
+    localStorage.setItem(GITHUB_CONFIG_COLLAPSE_KEY, collapsed ? '1' : '0');
+  });
+
+  function updateGithubConfigSummary() {
+    var hasToken = !!localStorage.getItem(GITHUB_TOKEN_KEY);
+    githubConfigSummary.textContent = hasToken ? 'token salvo' : 'token não configurado';
+    var lastBackup = localStorage.getItem(GITHUB_LAST_BACKUP_KEY);
+    if (lastBackup) {
+      githubBackupStatusEl.textContent = 'Último backup salvo neste navegador em: ' + new Date(lastBackup).toLocaleString('pt-BR');
+    } else {
+      githubBackupStatusEl.textContent = 'Nenhum backup enviado ainda a partir deste navegador.';
+    }
+  }
+
+  githubTokenInput.value = localStorage.getItem(GITHUB_TOKEN_KEY) || '';
+
+  saveGithubTokenBtn.addEventListener('click', function () {
+    var token = githubTokenInput.value.trim();
+    if (!token) {
+      alert('Cole um token do GitHub antes de salvar.');
+      return;
+    }
+    localStorage.setItem(GITHUB_TOKEN_KEY, token);
+    updateGithubConfigSummary();
+    log('Token do GitHub salvo neste navegador.', 'success');
+  });
+
+  clearGithubTokenBtn.addEventListener('click', function () {
+    localStorage.removeItem(GITHUB_TOKEN_KEY);
+    githubTokenInput.value = '';
+    updateGithubConfigSummary();
+    log('Token do GitHub removido deste navegador.', 'warn');
+  });
+
+  // Padrão inteligente igual ao da Configuração da IA: começa fechada se já tem token salvo.
+  var githubConfigStoredPref = localStorage.getItem(GITHUB_CONFIG_COLLAPSE_KEY);
+  var githubHasToken = !!localStorage.getItem(GITHUB_TOKEN_KEY);
+  applyGithubConfigCollapse(githubConfigStoredPref !== null ? githubConfigStoredPref === '1' : githubHasToken);
+  updateGithubConfigSummary();
+
+  // Converte texto (com acentos/emoji) pra Base64 sem usar a função depreciada `unescape`,
+  // e em pedaços pra não estourar o limite de argumentos do String.fromCharCode em arquivos grandes.
+  function utf8ToBase64(str) {
+    var bytes = new TextEncoder().encode(str);
+    var binary = '';
+    var chunkSize = 0x8000;
+    for (var i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  }
+
+  function pushBackupToGithub() {
+    var token = localStorage.getItem(GITHUB_TOKEN_KEY);
+    if (!token) {
+      log('Configure seu token do GitHub antes de salvar o backup (caixa "Backup no GitHub" no topo da página).', 'error');
+      expandGithubConfig();
+      githubTokenInput.focus();
+      return;
+    }
+    githubBackupBtn.disabled = true;
+    githubBackupBtn.textContent = '💾 Salvando no GitHub...';
+    log('Salvando backup no GitHub (' + GITHUB_OWNER + '/' + GITHUB_REPO + ')...');
+
+    var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + encodeURIComponent(GITHUB_FILE_PATH);
+    var headers = {
+      'Authorization': 'token ' + token,
+      'Accept': 'application/vnd.github+json'
+    };
+
+    fetch(apiUrl + '?ref=' + GITHUB_BRANCH, { headers: headers })
+      .then(function (res) {
+        if (res.status === 404) return null; // arquivo ainda não existe no repositório — primeiro backup
+        if (!res.ok) {
+          return res.json().then(function (d) {
+            throw new Error('Não foi possível consultar o repositório: ' + (d && d.message ? d.message : ('HTTP ' + res.status)));
+          });
+        }
+        return res.json();
+      })
+      .then(function (existing) {
+        var body = {
+          message: 'Backup automático via app: ' + new Date().toLocaleString('pt-BR'),
+          content: utf8ToBase64(PRISTINE_SOURCE_SNAPSHOT),
+          branch: GITHUB_BRANCH
+        };
+        if (existing && existing.sha) body.sha = existing.sha;
+        return fetch(apiUrl, {
+          method: 'PUT',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+          body: JSON.stringify(body)
+        });
+      })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            throw new Error(data && data.message ? data.message : ('HTTP ' + res.status));
+          }
+          return data;
+        });
+      })
+      .then(function () {
+        log('Backup salvo no GitHub com sucesso!', 'success');
+        localStorage.setItem(GITHUB_LAST_BACKUP_KEY, new Date().toISOString());
+        updateGithubConfigSummary();
+      })
+      .catch(function (err) {
+        log('Falha ao salvar backup no GitHub: ' + err.message, 'error');
+      })
+      .then(function () {
+        githubBackupBtn.disabled = false;
+        githubBackupBtn.textContent = '💾 Salvar Backup no GitHub';
+      });
+  }
+
+  githubBackupBtn.addEventListener('click', pushBackupToGithub);
+
+  addFieldBtn.addEventListener('click', function () {
+    var label = newFieldLabelInput.value.trim();
+    var desc = newFieldDescInput.value.trim();
+    if (!label) {
+      alert('Informe um nome para o novo campo.');
+      return;
+    }
+    var id = generateUniqueId(slugify(label));
+    fields.push({ id: id, label: label, desc: desc || ('Conteúdo referente a ' + label + '.'), active: true, noLangSplit: false, listMode: 'none', singleLine: false });
+    newFieldLabelInput.value = '';
+    newFieldDescInput.value = '';
+    renderFieldsConfig();
+  });
+
+  renderFieldsConfig();
+
+  /* ---------- Idiomas a extrair ---------- */
+
+  var LANGUAGE_OPTIONS = ['Português', 'English', 'Español', 'Français', 'Deutsch'];
+  var LANGUAGE_DISPLAY_NAMES_PT = {
+    'Português': 'Português',
+    'English': 'Inglês',
+    'Español': 'Espanhol',
+    'Français': 'Francês',
+    'Deutsch': 'Alemão'
+  };
+
+  function displayLangName(lang) {
+    return LANGUAGE_DISPLAY_NAMES_PT[lang] || lang;
+  }
+  var LANG_KEY = 'roteiro_last_languages';
+  var CUSTOM_LANG_KEY = 'roteiro_last_custom_lang';
+
+  function saveLanguagePrefs() {
+    var checked = Array.prototype.slice.call(langRow.querySelectorAll('input[type="checkbox"]'))
+      .filter(function (cb) { return cb.checked; })
+      .map(function (cb) { return cb.value; });
+    localStorage.setItem(LANG_KEY, JSON.stringify(checked));
+    localStorage.setItem(CUSTOM_LANG_KEY, customLangInput.value);
+  }
+
+  function renderLanguageChips() {
+    langRow.innerHTML = '';
+    var savedChecked = null;
+    try {
+      var raw = localStorage.getItem(LANG_KEY);
+      savedChecked = raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      savedChecked = null;
+    }
+
+    LANGUAGE_OPTIONS.forEach(function (lang) {
+      var chip = document.createElement('label');
+      chip.className = 'lang-chip';
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = lang;
+      cb.checked = savedChecked ? savedChecked.indexOf(lang) !== -1 : (lang === 'Português');
+      if (cb.checked) chip.classList.add('checked');
+
+      cb.addEventListener('change', function () {
+        chip.classList.toggle('checked', cb.checked);
+        saveLanguagePrefs();
+      });
+
+      var span = document.createElement('span');
+      span.textContent = lang;
+
+      chip.appendChild(cb);
+      chip.appendChild(span);
+      langRow.appendChild(chip);
+    });
+
+    customLangInput.value = localStorage.getItem(CUSTOM_LANG_KEY) || '';
+  }
+
+  customLangInput.addEventListener('input', saveLanguagePrefs);
+  renderLanguageChips();
+
+  function getSelectedLanguages() {
+    var checked = Array.prototype.slice.call(langRow.querySelectorAll('input[type="checkbox"]'))
+      .filter(function (cb) { return cb.checked; })
+      .map(function (cb) { return cb.value; });
+    var custom = customLangInput.value.split(',')
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+    return checked.concat(custom);
+  }
+
+  /* ---------- Upload de arquivos (drag and drop) ---------- */
+
+  var ALLOWED_EXT = ['xlsx', 'csv', 'md', 'txt'];
+
+  function getExt(filename) {
+    var parts = filename.split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : '';
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function renderFileList() {
+    fileListEl.innerHTML = '';
+    if (uploadedFiles.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'file-list-empty';
+      empty.textContent = 'Nenhum arquivo adicionado ainda.';
+      fileListEl.appendChild(empty);
+      return;
+    }
+    uploadedFiles.forEach(function (file, index) {
+      var row = document.createElement('div');
+      row.className = 'file-row';
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'file-name';
+      nameSpan.textContent = file.name;
+
+      var sizeSpan = document.createElement('span');
+      sizeSpan.className = 'file-size';
+      sizeSpan.textContent = formatSize(file.size);
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-icon-remove';
+      removeBtn.type = 'button';
+      removeBtn.title = 'Remover arquivo';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', function () {
+        uploadedFiles.splice(index, 1);
+        renderFileList();
+      });
+
+      row.appendChild(nameSpan);
+      row.appendChild(sizeSpan);
+      row.appendChild(removeBtn);
+      fileListEl.appendChild(row);
+    });
+  }
+
+  function handleFiles(fileListObj) {
+    var rejected = [];
+    Array.prototype.forEach.call(fileListObj, function (file) {
+      var ext = getExt(file.name);
+      if (ALLOWED_EXT.indexOf(ext) === -1) {
+        rejected.push(file.name);
+        return;
+      }
+      uploadedFiles.push(file);
+    });
+    renderFileList();
+    if (rejected.length > 0) {
+      alert('Arquivo(s) ignorado(s) por formato não suportado (.xlsx, .csv, .md, .txt apenas):\n' + rejected.join('\n'));
+    }
+  }
+
+  dropZone.addEventListener('click', function () {
+    fileInput.click();
+  });
+
+  dropZone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+
+  dropZone.addEventListener('dragleave', function (e) {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+
+  dropZone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer && e.dataTransfer.files) {
+      handleFiles(e.dataTransfer.files);
+    }
+  });
+
+  fileInput.addEventListener('change', function (e) {
+    handleFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  ['dragover', 'drop'].forEach(function (evtName) {
+    document.addEventListener(evtName, function (e) {
+      e.preventDefault();
+    }, false);
+  });
+
+  renderFileList();
+
+  /* ---------- Leitura de arquivos ---------- */
+
+  function readFileAsText(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+
+  function readXlsx(file) {
+    return new Promise(function (resolve, reject) {
+      if (typeof XLSX === 'undefined') {
+        reject(new Error('A biblioteca SheetJS (XLSX) não foi carregada. Verifique sua conexão com a internet e recarregue a página.'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var out = '';
+          workbook.SheetNames.forEach(function (sheetName) {
+            out += '\n--- Planilha: ' + sheetName + ' ---\n';
+            var sheet = workbook.Sheets[sheetName];
+            out += XLSX.utils.sheet_to_csv(sheet) + '\n';
+          });
+          resolve(out);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function extractFileContent(file) {
+    var ext = getExt(file.name);
+    if (ext === 'xlsx') return readXlsx(file);
+    if (ext === 'csv' || ext === 'md' || ext === 'txt') return readFileAsText(file);
+    return Promise.reject(new Error('Formato não suportado: ' + ext));
+  }
+
+  /* ---------- Log e progresso ---------- */
+
+  function log(msg, level) {
+    var line = document.createElement('div');
+    line.className = 'log-line' + (level ? ' log-' + level : '');
+    var time = new Date().toLocaleTimeString('pt-BR');
+    line.textContent = '[' + time + '] ' + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setProgress(pct, stepText) {
+    progressFill.style.width = pct + '%';
+    progressPercentText.textContent = pct + '%';
+    if (stepText) progressStepText.textContent = stepText;
+  }
+
+  // Progresso da fila: o número/barra reflete DOCUMENTOS CONCLUÍDOS (0/5, 1/5, 2/5...) — só avança
+  // quando um documento inteiro termina, nunca no meio de um. O texto de etapa continua atualizando
+  // durante o processamento do documento atual, então a tela nunca fica sem nenhuma novidade.
+  function setOverallProgress(completedCount, totalJobs) {
+    var pct = Math.round((completedCount / totalJobs) * 100);
+    progressFill.style.width = pct + '%';
+    progressPercentText.textContent = pct + '% (' + completedCount + '/' + totalJobs + ' documentos concluídos)';
+  }
+
+  function setJobStepText(jobIndex, totalJobs, stepText) {
+    progressStepText.textContent = 'Documento ' + (jobIndex + 1) + ' de ' + totalJobs + (stepText ? ' — ' + stepText : '');
+  }
+
+  /* ---------- Filtragem de conteúdo por idioma (reduz tamanho do prompt) ---------- */
+
+  function normalizeLangText(s) {
+    return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  }
+
+  function detectHeadingLanguage(headingText, knownLanguages) {
+    var normalizedHeading = normalizeLangText(headingText);
+    for (var i = 0; i < knownLanguages.length; i++) {
+      var normLang = normalizeLangText(knownLanguages[i]);
+      if (normLang && normalizedHeading.indexOf(normLang) !== -1) {
+        return knownLanguages[i];
+      }
+    }
+    return null;
+  }
+
+  // Filtra texto com cabeçalhos Markdown (#, ##, ###...), removendo seções cujo cabeçalho
+  // nomeia claramente um idioma que não está na lista selecionada. Seções sem idioma detectado
+  // (conteúdo compartilhado, ex: cenas/imagens comuns a todos os idiomas) são sempre mantidas.
+  // Heurística "melhor esforço": em caso de dúvida, mantém o trecho (nunca descarta às cegas).
+  function filterTextByLanguage(text, selectedLanguages) {
+    if (!selectedLanguages || selectedLanguages.length === 0) return text;
+
+    var knownVocabulary = LANGUAGE_OPTIONS.concat(selectedLanguages).filter(function (v, i, arr) {
+      return arr.indexOf(v) === i;
+    });
+    var selectedSet = {};
+    selectedLanguages.forEach(function (l) { selectedSet[normalizeLangText(l)] = true; });
+
+    var lines = text.split('\n');
+    var out = [];
+    var currentLang = null;
+
+    lines.forEach(function (line) {
+      var headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        var level = headingMatch[1].length;
+        var detected = detectHeadingLanguage(headingMatch[2], knownVocabulary);
+        if (detected) {
+          currentLang = detected;
+        } else if (level <= 2) {
+          currentLang = null;
+        }
+      }
+      var keep = currentLang === null || selectedSet[normalizeLangText(currentLang)];
+      if (keep) out.push(line);
+    });
+
+    return out.join('\n');
+  }
+
+  /* ---------- Prompt e chamadas de IA ---------- */
+
+  function buildPrompt(activeFields, combinedText, languages, chunkInfo) {
+    var fieldsDesc = activeFields.map(function (f) {
+      return '- "' + f.id + '" (' + f.label + '): ' + f.desc;
+    }).join('\n');
+
+    var chunkBlock = '';
+    if (chunkInfo) {
+      chunkBlock = 'ATENÇÃO: o texto abaixo é um TRECHO PARCIAL (parte ' + chunkInfo.index + ' de ' + chunkInfo.total + ') de um documento maior, dividido por tamanho — ele pode não conter todos os campos pedidos, e pode começar ou terminar no meio de uma seção. ' +
+        'Se um campo não estiver claramente presente NESTE trecho, retorne string vazia "" para ele (isso é esperado e normal, não é erro). Não tente adivinhar o que estaria nas outras partes.\n\n';
+    }
+
+    var noSplitFields = activeFields.filter(function (f) { return f.noLangSplit; });
+
+    var languageBlock;
+    if (languages && languages.length > 0) {
+      var langListStr = languages.map(function (l) { return '"' + l + '"'; }).join(', ');
+      var exampleTextField = languages.map(function (l) { return '"' + l + '": "..."'; }).join(', ');
+      var exampleArrayField = languages.map(function (l) { return '"' + l + '": []'; }).join(', ');
+      languageBlock = 'IDIOMA(S) A EXTRAIR: ' + languages.join(', ') + '.\n' +
+        'Extraia e utilize SOMENTE o conteúdo correspondente a esse(s) idioma(s). Ignore completamente qualquer conteúdo do documento que esteja em outros idiomas.\n' +
+        'FORMATO OBRIGATÓRIO (sempre que houver idioma selecionado, mesmo que seja só um): o valor de CADA chave de campo listada abaixo deve ser um OBJETO JSON, não uma string/array direto. Esse objeto tem uma sub-chave para CADA idioma selecionado, usando EXATAMENTE estes nomes de sub-chave: ' + langListStr + '.\n' +
+        '- Para campos de texto: {' + exampleTextField + '} — cada sub-chave contém uma string com o conteúdo daquele idioma (ou "" se não houver conteúdo nesse idioma para esse campo).\n' +
+        '- Para campos que pedem uma LISTA (ex: "youtube_tags", "descricao", prompts de imagem/vídeo — veja a descrição de cada campo acima): {' + exampleArrayField + '} — cada sub-chave contém um ARRAY de strings (ou [] se não houver).\n' +
+        'Isso vale mesmo com um ÚNICO idioma selecionado — use o objeto com uma sub-chave só (ex: {"' + languages[0] + '": "..."}), NUNCA uma string/array direto.\n' +
+        'NUNCA escreva o nome do idioma dentro do texto do conteúdo (ex: nunca "Português: texto..." dentro de uma string) — o idioma já é a chave do objeto, o valor deve ser só o conteúdo puro.\n' +
+        (noSplitFields.length > 0
+          ? 'EXCEÇÃO ao formato acima: os campos ' + noSplitFields.map(function (f) { return '"' + f.id + '"'; }).join(', ') +
+            ' são independentes de idioma (só existem em inglês, sempre) — para eles, retorne uma string ÚNICA em inglês (ou array único para listas), SEM o objeto por idioma, mesmo com idioma(s) selecionado(s).\n'
+          : '');
+    } else {
+      languageBlock = 'IDIOMAS A EXTRAIR: nenhum filtro foi selecionado — utilize todo o conteúdo relevante do documento, em qualquer idioma que ele esteja. Não adicione rótulos de idioma a menos que o documento tenha conteúdo em múltiplos idiomas relevantes.\n';
+    }
+
+    return 'Você é um assistente especializado em extrair e padronizar roteiros de vídeos para YouTube a partir de documentos de produção (planilhas e textos) que NÃO seguem um formato fixo — a estrutura muda de documento para documento.\n\n' +
+      chunkBlock +
+      languageBlock + '\n' +
+      'Retorne SOMENTE um objeto JSON válido, sem nenhum texto antes ou depois, sem blocos de código markdown, contendo EXATAMENTE estas chaves:\n' +
+      fieldsDesc + '\n\n' +
+      'REGRAS IMPORTANTES (siga rigorosamente, nesta ordem de prioridade):\n' +
+      '1. COPIE O TEXTO LITERALMENTE. Sua tarefa é localizar o trecho certo no documento e copiá-lo palavra por palavra — NUNCA parafraseie, resuma, reescreva, condense ou "melhore" o texto original. Se o trecho original tem 5 parágrafos, o campo deve conter os 5 parágrafos completos, não um resumo de 2 frases. Isso vale especialmente para narração, descrição e prompts de imagem/vídeo/thumbnail.\n' +
+      '2. Para o campo de TÍTULO: use apenas o texto que aparece logo abaixo de um cabeçalho especificamente chamado "Título"/"Title" (ex: "### Título") DENTRO da seção do idioma correto. NUNCA use texto de metadados gerais do topo do documento (campos como "Série"/"Series", nome do arquivo, cabeçalho principal do documento), mesmo que pareçam parecidos — isso NÃO é o título do vídeo. Copie a linha inteira, sem cortar nada, incluindo subtítulos após hífen, barra vertical "|" ou ponto médio "·".\n' +
+      '3. Se um campo pedido não tiver NENHUMA seção/tabela claramente dedicada a esse conteúdo no documento-fonte, retorne uma string vazia "" (ou array vazio [] para listas). NUNCA invente, componha ou generalize conteúdo de outras seções para preencher um campo vazio — por exemplo, um prompt de thumbnail NÃO é um prompt de personagens, e uma tabela de vídeos de estoque já prontos NÃO é um prompt de geração de vídeo por IA.\n' +
+      '4. Ao copiar LISTAS (tags, hashtags, prompts numerados), inclua TODOS os itens do documento, sem cortar a quantidade — se o documento tem 25 tags ou 12 imagens numeradas, o campo deve ter as 25 tags ou as 12 imagens, nunca um subconjunto.\n' +
+      '5. Quando o documento tiver MÚLTIPLAS variações/opções para o mesmo campo (ex: "Opção A/B/C/D" de descrição), inclua TODAS elas na íntegra e literalmente, numeradas/rotuladas claramente, na ordem em que aparecem. Nunca escolha, resuma ou misture apenas uma.\n' +
+      '6. O campo de prompt de imagem/vídeo (quando existir na lista) reúne AMBOS os tipos numa lista só — não tente separar por tipo nem decidir "isso é imagem, isso é vídeo": se é um prompt de geração visual por IA para uma cena, ele entra na lista, na ordem em que aparece no documento.\n' +
+      '7. Nomes de arquivo de vídeo/imagem de banco de estoque já prontos (ex: "nome-arquivo.mp4") NÃO são prompts de geração por IA — não os inclua nos campos de prompt.\n' +
+      '8. Use exatamente os nomes de chave (entre aspas) indicados acima como as chaves do objeto JSON de resposta.\n' +
+      '9. Se apenas um idioma (ou nenhum) foi selecionado: os campos que pedem ARRAY (como indicado na descrição de cada campo acima) devem ser um array de strings; os demais campos de texto devem ser strings (podem ter múltiplos parágrafos e usar "\\n" para quebras de linha). Se mais de um idioma foi selecionado, siga o FORMATO OBRIGATÓRIO de objeto por idioma descrito acima em vez disso (cada sub-chave de idioma segue a mesma regra de array vs string).\n' +
+      '10. Baseie-se exclusivamente no conteúdo fornecido abaixo — não use conhecimento externo nem suposições.\n' +
+      '11. Não inclua comentários, explicações ou blocos de código (crase tripla) na resposta. Apenas o JSON puro.\n\n' +
+      'CONTEÚDO DE ORIGEM:\n' +
+      '"""\n' + combinedText + '\n"""';
+  }
+
+  var REQUEST_TIMEOUT_MS = 60000;
+
+  function fetchWithTimeout(url, options, timeoutMs) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
+    var fetchOptions = {};
+    for (var key in options) { fetchOptions[key] = options[key]; }
+    fetchOptions.signal = controller.signal;
+    return fetch(url, fetchOptions).then(function (res) {
+      clearTimeout(timeoutId);
+      return res;
+    }, function (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        var timeoutErr = new Error('A requisição não respondeu em ' + Math.round(timeoutMs / 1000) + 's (possível instabilidade de rede ou do servidor).');
+        timeoutErr.isTimeout = true;
+        throw timeoutErr;
+      }
+      throw err;
+    });
+  }
+
+  function callGemini(apiKey, prompt, model) {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey);
+    var body = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2
+      }
+    };
+    return fetchWithTimeout(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }, REQUEST_TIMEOUT_MS).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          var msg = (data && data.error && data.error.message) ? data.error.message : ('HTTP ' + res.status);
+          var status = (data && data.error && data.error.status) ? ' [' + data.error.status + ']' : '';
+          if (res.status === 404 || (data && data.error && data.error.status === 'NOT_FOUND')) {
+            var notFoundErr = new Error('O modelo "' + model + '" não está disponível para sua chave. Detalhe original: ' + msg);
+            notFoundErr.modelNotFound = true;
+            throw notFoundErr;
+          }
+          if (res.status === 429 || res.status === 503 ||
+            (data && data.error && (data.error.status === 'RESOURCE_EXHAUSTED' || data.error.status === 'UNAVAILABLE'))) {
+            var retryErr = new Error('Gemini retornou erro' + status + ': ' + msg);
+            retryErr.retryable = true;
+            retryErr.quotaExhausted = !!(data && data.error && data.error.status === 'RESOURCE_EXHAUSTED');
+            var delayMatch = msg.match(/retry in ([\d.]+)\s*s/i);
+            retryErr.retryDelaySeconds = delayMatch ? Math.ceil(parseFloat(delayMatch[1])) + 1 : 6;
+            throw retryErr;
+          }
+          throw new Error('Gemini retornou erro' + status + ': ' + msg);
+        }
+        var candidate = data && data.candidates && data.candidates[0];
+        var text = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] &&
+          candidate.content.parts[0].text;
+        if (!text) {
+          var reason = (candidate && candidate.finishReason) ||
+            (data && data.promptFeedback && data.promptFeedback.blockReason) || 'desconhecido';
+          throw new Error('Resposta da Gemini veio vazia (motivo: ' + reason + '). Resposta completa: ' + JSON.stringify(data));
+        }
+        return text;
+      });
+    });
+  }
+
+  function wait(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  var MAX_AUTO_RETRY_WAIT_SECONDS = 30;
+
+  function callGeminiWithRetry(apiKey, prompt, model, maxRetries) {
+    function attempt(retryCount) {
+      return callGemini(apiKey, prompt, model).catch(function (err) {
+        var isRetryable = err.retryable || err.isTimeout;
+        // Cota esgotada não melhora tentando de novo o MESMO modelo — propaga na hora para
+        // que a camada de cima já tente outro modelo (quota costuma ser por modelo) ou outra chave.
+        if (!isRetryable || err.quotaExhausted || retryCount >= maxRetries) {
+          throw err;
+        }
+        var delaySeconds = err.retryDelaySeconds || 5;
+        if (delaySeconds > MAX_AUTO_RETRY_WAIT_SECONDS) {
+          var longWaitErr = new Error(err.message + ' A Gemini pediu para aguardar ' + delaySeconds + 's (~' +
+            Math.ceil(delaySeconds / 60) + ' min) antes de tentar de novo — isso é mais do que tentamos automaticamente. ' +
+            'Aguarde um pouco e clique em "Gerar Roteiro Padronizado" de novo, ou tente o Groq.');
+          longWaitErr.quotaExhausted = err.quotaExhausted;
+          throw longWaitErr;
+        }
+        log('Instabilidade temporária na Gemini (' + err.message + '). Tentando novamente em ' + delaySeconds + 's...', 'warn');
+        return wait(delaySeconds * 1000).then(function () {
+          return attempt(retryCount + 1);
+        });
+      });
+    }
+    return attempt(0);
+  }
+
+  // Modelos "-latest" da Google apontam sempre para a versão atual recomendada, então raramente
+  // ficam desatualizados. Ainda assim, se o modelo configurado sumir ou for descontinuado, tentamos
+  // esta pequena lista de alternativas conhecidas (evitando as versões datadas da geração 2.5, que
+  // já se mostraram bloqueadas para contas novas) antes de desistir.
+  var GEMINI_FALLBACK_MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+
+  function callGeminiWithModelFallback(apiKey, prompt, configuredModel) {
+    var chain = [configuredModel];
+    GEMINI_FALLBACK_MODELS.forEach(function (m) {
+      if (chain.indexOf(m) === -1) chain.push(m);
+    });
+
+    function tryModel(index) {
+      var m = chain[index];
+      if (index > 0) {
+        log('Modelo anterior indisponível. Tentando modelo alternativo: ' + m + '...', 'warn');
+      }
+      return callGeminiWithRetry(apiKey, prompt, m, 2).then(function (text) {
+        if (index > 0) {
+          log('Funcionou com "' + m + '". Se quiser, atualize o campo Modelo para esse valor para pular essa tentativa da próxima vez.', 'success');
+        }
+        return text;
+      }).catch(function (err) {
+        var shouldTryNextModel = (err.modelNotFound || err.quotaExhausted) && index < chain.length - 1;
+        if (shouldTryNextModel) {
+          log('Modelo "' + m + '" indisponível ou sem cota. Tentando o próximo modelo...', 'warn');
+          return tryModel(index + 1);
+        }
+        throw err;
+      });
+    }
+
+    return tryModel(0);
+  }
+
+  // Se TODOS os modelos falharem por cota esgotada com a chave atual, tenta a próxima chave
+  // configurada (se houver), recomeçando a lista de modelos do zero para a nova chave.
+  function callGeminiWithKeyRotation(apiKeys, prompt, configuredModel) {
+    function tryKey(index) {
+      var apiKey = apiKeys[index];
+      if (index > 0) {
+        log('Chave anterior sem cota disponível. Tentando chave alternativa ' + (index + 1) + ' de ' + apiKeys.length + '...', 'warn');
+      }
+      return callGeminiWithModelFallback(apiKey, prompt, configuredModel).then(function (text) {
+        if (index > 0) {
+          log('Funcionou com a chave alternativa ' + (index + 1) + '.', 'success');
+        }
+        return text;
+      }).catch(function (err) {
+        if (err.quotaExhausted && index < apiKeys.length - 1) {
+          return tryKey(index + 1);
+        }
+        throw err;
+      });
+    }
+    return tryKey(0);
+  }
+
+  function callGroq(apiKey, prompt, model, maxTokens) {
+    return fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: model,
+        temperature: 0.2,
+        max_tokens: maxTokens || 8192,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    }, REQUEST_TIMEOUT_MS).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          var msg = (data && data.error && data.error.message) ? data.error.message : ('HTTP ' + res.status);
+          if (res.status === 429 && /request too large/i.test(msg)) {
+            var tooLargeErr = new Error('Limite de tokens por minuto do Groq (plano gratuito) excedido para este modelo — o documento é grande demais para uma única requisição. Detalhe original: ' + msg);
+            tooLargeErr.tooLarge = true;
+            throw tooLargeErr;
+          }
+          if (res.status === 429 && /tokens per minute|TPM|rate.?limit/i.test(msg)) {
+            throw new Error('Limite de tokens por minuto do Groq (plano gratuito) excedido para este modelo. ' +
+              'Tente: (1) processar menos arquivos por vez, (2) desativar campos do roteiro que você não precisa, ou ' +
+              '(3) usar o Gemini, que tem um limite de tokens bem maior. Detalhe original: ' + msg);
+          }
+          throw new Error('Groq retornou erro: ' + msg);
+        }
+        var choice = data && data.choices && data.choices[0];
+        var text = choice && choice.message && choice.message.content;
+        if (!text) {
+          throw new Error('Resposta da Groq veio vazia (finish_reason: ' + (choice && choice.finish_reason) + '). Resposta completa: ' + JSON.stringify(data));
+        }
+        return text;
+      });
+    });
+  }
+
+  /* ---------- Divisão em partes (fallback quando o Groq recusa por tamanho) ---------- */
+
+  var GROQ_CHUNK_TARGET_CHARS = 6500;
+  var GROQ_CHUNK_HARD_LIMIT_CHARS = 8450;
+  var GROQ_CHUNK_MAX_OUTPUT_TOKENS = 2048;
+  var GROQ_CHUNK_DELAY_SECONDS = 25;
+  var GROQ_CHUNK_MAX_COUNT = 6;
+  var GROQ_CHUNK_OVERLAP_LINES = 3;
+
+  // Divide o texto em pedaços de tamanho parecido, cortando de preferência nos cabeçalhos
+  // Markdown (#, ##, ###...) para manter seções inteiras (ex: narração+imagens, título+descrição)
+  // juntas no mesmo pedaço. Se não houver cabeçalho por perto (ex: planilha em CSV), corta no
+  // limite máximo (GROQ_CHUNK_HARD_LIMIT_CHARS) para nunca deixar um pedaço grande demais.
+  function splitIntoChunks(text, targetChars) {
+    var lines = text.split('\n');
+    var chunks = [];
+    var current = [];
+    var currentLen = 0;
+
+    function isHeading(line) {
+      return /^#{1,6}\s/.test(line);
+    }
+
+    function pushCurrent() {
+      if (current.length === 0) return;
+      chunks.push(current.join('\n'));
+      var tail = current.slice(-GROQ_CHUNK_OVERLAP_LINES);
+      current = tail.slice();
+      currentLen = tail.join('\n').length + (tail.length > 0 ? 1 : 0);
+    }
+
+    lines.forEach(function (line) {
+      if (line.length > GROQ_CHUNK_HARD_LIMIT_CHARS) {
+        pushCurrent();
+        for (var i = 0; i < line.length; i += targetChars) {
+          chunks.push(line.slice(i, i + targetChars));
+        }
+        return;
+      }
+      var wouldExceedTarget = currentLen + line.length + 1 > targetChars;
+      var wouldExceedHardLimit = currentLen + line.length + 1 > GROQ_CHUNK_HARD_LIMIT_CHARS;
+      var goodBreakPoint = isHeading(line);
+      if (current.length > GROQ_CHUNK_OVERLAP_LINES && (wouldExceedHardLimit || (wouldExceedTarget && goodBreakPoint))) {
+        pushCurrent();
+      }
+      current.push(line);
+      currentLen += line.length + 1;
+    });
+    if (current.length > 0) chunks.push(current.join('\n'));
+    return chunks;
+  }
+
+  // Junta os resultados parciais de cada pedaço num único objeto. Campos de lista (array)
+  // são concatenados e deduplicados; campos de texto com conteúdo em mais de um pedaço são
+  // concatenados (ex: narração/imagens que atravessam a borda de um pedaço); campos com
+  // conteúdo em só um pedaço usam esse valor diretamente (ex: título).
+  function mergeChunkValues(values, isArrayField) {
+    var collected = [];
+    values.forEach(function (val) {
+      if (isArrayField) {
+        if (Array.isArray(val)) collected = collected.concat(val);
+      } else if (val !== undefined && val !== null && String(val).trim()) {
+        collected.push(String(val).trim());
+      }
+    });
+    if (isArrayField) {
+      var seen = {};
+      return collected.filter(function (t) {
+        var k = String(t).toLowerCase().trim();
+        if (!k || seen[k]) return false;
+        seen[k] = true;
+        return true;
+      });
+    }
+    return collected.length <= 1 ? (collected[0] || '') : collected.join('\n\n');
+  }
+
+  function mergeChunkResults(partialResults, activeFields, languages) {
+    var multiLang = languages && languages.length > 0;
+    var merged = {};
+    activeFields.forEach(function (f) {
+      var isArrayField = isListTypeField(f);
+      if (multiLang) {
+        var mergedByLang = {};
+        languages.forEach(function (lang) {
+          var langValues = partialResults.map(function (partial) {
+            var fieldVal = partial ? partial[f.id] : undefined;
+            return (fieldVal && typeof fieldVal === 'object' && !Array.isArray(fieldVal)) ? fieldVal[lang] : undefined;
+          });
+          mergedByLang[lang] = mergeChunkValues(langValues, isArrayField);
+        });
+        merged[f.id] = mergedByLang;
+      } else {
+        var values = partialResults.map(function (partial) { return partial ? partial[f.id] : undefined; });
+        merged[f.id] = mergeChunkValues(values, isArrayField);
+      }
+    });
+    return merged;
+  }
+
+  function callGroqChunked(apiKey, activeFields, combinedText, languages, model) {
+    var chunks = splitIntoChunks(combinedText, GROQ_CHUNK_TARGET_CHARS);
+
+    if (chunks.length > GROQ_CHUNK_MAX_COUNT) {
+      throw new Error('Documento grande demais até para dividir em partes no Groq (precisaria de ' + chunks.length +
+        ' partes, o que ficaria lento e ainda arriscaria estourar o limite diário). Recomendamos usar o Gemini para este documento.');
+    }
+
+    log('Dividindo o documento em ' + chunks.length + ' parte(s) para caber no limite gratuito do Groq...', 'warn');
+
+    var partials = [];
+    var chain = Promise.resolve();
+
+    chunks.forEach(function (chunkText, i) {
+      chain = chain.then(function () {
+        log('Enviando parte ' + (i + 1) + ' de ' + chunks.length + ' para o Groq...');
+
+        var chunkPrompt = buildPrompt(activeFields, chunkText, languages, { index: i + 1, total: chunks.length });
+        return callGroq(apiKey, chunkPrompt, model, GROQ_CHUNK_MAX_OUTPUT_TOKENS).then(function (rawResponse) {
+          try {
+            partials.push(parseAIJson(rawResponse));
+            log('Parte ' + (i + 1) + ' de ' + chunks.length + ' recebida e interpretada.', 'success');
+          } catch (parseErr) {
+            log('Parte ' + (i + 1) + ' de ' + chunks.length + ' veio com JSON inválido — ignorando esta parte. Resposta bruta: ' + rawResponse, 'warn');
+          }
+        }).then(function () {
+          var isLast = i === chunks.length - 1;
+          if (!isLast) {
+            log('Aguardando ' + GROQ_CHUNK_DELAY_SECONDS + 's para respeitar o limite por minuto do Groq...');
+            return wait(GROQ_CHUNK_DELAY_SECONDS * 1000);
+          }
+        });
+      });
+    });
+
+    return chain.then(function () {
+      if (partials.length === 0) {
+        throw new Error('Nenhuma das partes enviadas ao Groq retornou um JSON válido.');
+      }
+      log('Juntando os resultados das ' + chunks.length + ' partes...');
+      var merged = mergeChunkResults(partials, activeFields, languages);
+      return JSON.stringify(merged);
+    });
+  }
+
+  function estimateTokenCount(text) {
+    // Estimativa conservadora: texto em português/multilíngue com muita instrução técnica
+    // tokeniza de forma menos eficiente que o clássico "4 chars por token" (medido na prática
+    // contra a resposta real da API: ~1.3 chars por token para este tipo de conteúdo).
+    return Math.ceil(text.length / 1.3);
+  }
+
+  function parseAIJson(raw) {
+    var cleaned = raw.trim();
+    cleaned = cleaned.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch (e) {
+      var start = cleaned.indexOf('{');
+      var end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        return JSON.parse(cleaned.substring(start, end + 1));
+      }
+      throw e;
+    }
+  }
+
+  /* ---------- Processamento principal ---------- */
+
+  var FILTERABLE_EXT = ['md', 'txt'];
+
+  // Processa UM arquivo: le, filtra por idioma se aplicavel, monta o prompt, chama a IA
+  // (com toda a cascata de fallback de modelo/chave ou divisao em partes do Groq) e retorna
+  // o objeto já parseado e com os campos ausentes preenchidos.
+  function processSingleFile(file, activeFields, provider, apiKey, apiKeys, model, languages, jobIndex, totalJobs) {
+    var multiLang = languages.length > 0;
+    function progress(stepText) {
+      setJobStepText(jobIndex, totalJobs, stepText);
+    }
+
+    return extractFileContent(file)
+      .then(function (content) {
+        var ext = getExt(file.name);
+        if (languages.length > 0 && FILTERABLE_EXT.indexOf(ext) !== -1) {
+          var originalLen = content.length;
+          content = filterTextByLanguage(content, languages);
+          if (content.length < originalLen) {
+            var reductionPct = Math.round((1 - content.length / originalLen) * 100);
+            log(file.name + ': filtrado por idioma (' + originalLen + ' → ' + content.length + ' caracteres, -' + reductionPct + '%).');
+          }
+        } else if (languages.length > 0 && (ext === 'xlsx' || ext === 'csv')) {
+          log(file.name + ': planilhas não são filtradas por idioma (colunas de idiomas diferentes ficam misturadas na mesma linha; filtrar às cegas arriscaria apagar dados certos).');
+        }
+        log(file.name + ': lido com sucesso.', 'success');
+        progress('Montando prompt para a IA...');
+
+        var prompt = buildPrompt(activeFields, content, languages);
+        var estimatedTokens = estimateTokenCount(prompt);
+        log('Prompt montado (' + prompt.length + ' caracteres, ~' + estimatedTokens + ' tokens estimados).');
+
+        if (provider === 'groq' && estimatedTokens > 10000) {
+          log('AVISO: documento grande para o plano gratuito do Groq (limite de 12.000 tokens/minuto neste modelo). ' +
+            'Se a requisição for recusada por tamanho, vamos dividir automaticamente em partes menores e tentar de novo.', 'warn');
+        }
+
+        progress('Enviando para a IA (' + (provider === 'gemini' ? 'Gemini' : 'Groq') + ')...');
+        log('Enviando requisição para ' + (provider === 'gemini' ? 'Gemini' : 'Groq') + ' (modelo: ' + model + ')...');
+
+        if (provider === 'gemini') {
+          return callGeminiWithKeyRotation(apiKeys, prompt, model);
+        }
+        return callGroq(apiKey, prompt, model).catch(function (err) {
+          if (!err.tooLarge) throw err;
+          log(err.message, 'warn');
+          return callGroqChunked(apiKey, activeFields, content, languages, model);
+        });
+      })
+      .then(function (rawResponse) {
+        progress('Resposta recebida. Interpretando JSON...');
+        log('Resposta recebida da IA. Interpretando JSON...', 'success');
+
+        var parsed;
+        try {
+          parsed = parseAIJson(rawResponse);
+        } catch (parseErr) {
+          log('Não foi possível interpretar o JSON retornado pela IA.', 'error');
+          log('Resposta bruta da IA: ' + rawResponse, 'error');
+          throw parseErr;
+        }
+
+        normalizeGeneratedData(parsed, activeFields, languages);
+
+        progress('Concluído!');
+        return parsed;
+      });
+  }
+
+  // Preenche/normaliza `parsed` pra ter exatamente o formato esperado (objeto por idioma quando
+  // aplicável, listas onde for o caso) — usando string/array vazio para qualquer campo ausente.
+  // Chamado tanto com a resposta real da IA quanto com um objeto vazio {} (documento em branco),
+  // então serve como a mesma fonte de verdade pro "formato de um campo vazio".
+  function normalizeGeneratedData(parsed, activeFields, languages) {
+    var multiLang = languages.length > 0;
+
+    activeFields.forEach(function (f) {
+      var isListField = isListTypeField(f);
+      if (multiLang && !f.noLangSplit) {
+        var val = parsed[f.id];
+        if (!val || typeof val !== 'object' || Array.isArray(val)) val = {};
+        var normalized = {};
+        languages.forEach(function (lang) {
+          var langVal = val[lang];
+          normalized[lang] = isListField
+            ? (Array.isArray(langVal) ? langVal : [])
+            : (typeof langVal === 'string' ? langVal : '');
+        });
+        parsed[f.id] = normalized;
+      } else {
+        // campo sem divisão por idioma (ex: prompt de imagem, sempre em inglês) ou modo de idioma único
+        var flatVal = parsed[f.id];
+        if (isListField) {
+          parsed[f.id] = Array.isArray(flatVal) ? flatVal : [];
+        } else if (isMultiLangValue(flatVal)) {
+          // a IA devolveu um objeto por idioma mesmo pedindo valor único: pega o primeiro conteúdo não vazio
+          var firstNonEmpty = Object.keys(flatVal).map(function (k) { return flatVal[k]; }).filter(function (v) { return v && String(v).trim(); })[0];
+          parsed[f.id] = firstNonEmpty || '';
+        } else {
+          parsed[f.id] = typeof flatVal === 'string' ? flatVal : '';
+        }
+      }
+    });
+
+    // Campos marcados como "singleLine" (ex: prompts de imagem/vídeo/personagens/thumbnail) nunca
+    // devem ter quebra de linha interna — a IA às vezes copia o texto-fonte com quebras de linha
+    // (o documento original formata assim pra ficar legível), mas pra colar num gerador de imagem/
+    // vídeo é melhor uma linha só. Isso é feito aqui no código, não pedido só à IA, pra garantir
+    // sempre — funciona em qualquer formato (string simples, lista, objeto por idioma, ou os dois).
+    activeFields.forEach(function (f) {
+      if (f.singleLine) {
+        parsed[f.id] = normalizeSingleLineValue(parsed[f.id]);
+      }
+    });
+
+    // "descricao" chega como uma LISTA de opções (uma por variação encontrada no documento,
+    // já com as hashtags coladas). Aqui sorteamos UMA opção de verdade (Math.random, não a IA
+    // "decidindo" — isso é mais confiável) e a transformamos num valor simples, igual aos outros
+    // campos de texto. Sorteia o MESMO índice em todos os idiomas, pra manter a mesma opção
+    // tematicamente equivalente entre as traduções. Com listas vazias (documento em branco),
+    // isso naturalmente vira string vazia — sem sortear nada.
+    if (Object.prototype.hasOwnProperty.call(parsed, 'descricao')) {
+      var descVal = parsed.descricao;
+      if (isMultiLangValue(descVal)) {
+        var maxOptions = 0;
+        Object.keys(descVal).forEach(function (lang) {
+          if (Array.isArray(descVal[lang])) maxOptions = Math.max(maxOptions, descVal[lang].length);
+        });
+        var pickIndex = maxOptions > 0 ? Math.floor(Math.random() * maxOptions) : 0;
+        var collapsedDesc = {};
+        Object.keys(descVal).forEach(function (lang) {
+          var arr = Array.isArray(descVal[lang]) ? descVal[lang] : [];
+          collapsedDesc[lang] = arr.length ? arr[Math.min(pickIndex, arr.length - 1)] : '';
+        });
+        parsed.descricao = collapsedDesc;
+        if (maxOptions > 1) log('Descrição: sorteada a opção ' + (pickIndex + 1) + ' de ' + maxOptions + ' encontradas.', 'success');
+      } else if (Array.isArray(descVal)) {
+        var pickIndexFlat = descVal.length > 0 ? Math.floor(Math.random() * descVal.length) : 0;
+        parsed.descricao = descVal.length ? descVal[pickIndexFlat] : '';
+        if (descVal.length > 1) log('Descrição: sorteada a opção ' + (pickIndexFlat + 1) + ' de ' + descVal.length + ' encontradas.', 'success');
+      }
+    }
+
+    return parsed;
+  }
+
+  /* ---------- Fila de processamento ---------- */
+
+  function renderQueue() {
+    if (queueJobs.length === 0) {
+      queueSidebar.style.display = 'none';
+      return;
+    }
+    queueSidebar.style.display = 'block';
+
+    var doneCount = queueJobs.filter(function (j) { return j.status === 'concluido'; }).length;
+    queueCountBadge.textContent = doneCount + '/' + queueJobs.length + ' concluídos';
+
+    queueList.innerHTML = '';
+    queueJobs.forEach(function (job) {
+      var row = document.createElement('div');
+      row.className = 'queue-item status-' + job.status;
+      if (job.status === 'concluido') row.classList.add('clickable');
+      if (job.id === activeResultJobId) row.classList.add('selected');
+
+      var statusIcon = document.createElement('span');
+      statusIcon.className = 'queue-item-status';
+      statusIcon.textContent = job.status === 'aguardando' ? '⏳' :
+        job.status === 'processando' ? '⚙️' :
+        job.status === 'concluido' ? '✅' : '❌';
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'queue-item-name';
+      nameSpan.title = job.file.name + (job.errorMessage ? ' — ' + job.errorMessage : '');
+      nameSpan.textContent = job.file.name;
+
+      row.appendChild(statusIcon);
+
+      if (job.status === 'concluido') {
+        var selectCb = document.createElement('input');
+        selectCb.type = 'checkbox';
+        selectCb.className = 'queue-item-select';
+        selectCb.title = 'Selecionar para refazer em lote';
+        selectCb.checked = !!job.selectedForRedo;
+        selectCb.addEventListener('click', function (e) { e.stopPropagation(); });
+        selectCb.addEventListener('change', function () {
+          job.selectedForRedo = selectCb.checked;
+          updateRedoSelectedBtn();
+        });
+        row.appendChild(selectCb);
+      }
+
+      row.appendChild(nameSpan);
+
+      if (job.status === 'concluido') {
+        row.addEventListener('click', function () { selectJobResult(job.id); });
+
+        var redoBtn = document.createElement('button');
+        redoBtn.className = 'queue-item-dl';
+        redoBtn.type = 'button';
+        redoBtn.title = 'Refazer este roteiro (gera de novo, substituindo o resultado atual)';
+        redoBtn.textContent = '🔄';
+        redoBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          redoJob(job.id);
+        });
+        row.appendChild(redoBtn);
+
+        var dlBtn = document.createElement('button');
+        dlBtn.className = 'queue-item-dl';
+        dlBtn.type = 'button';
+        dlBtn.title = 'Baixar este roteiro (.md)';
+        dlBtn.textContent = '⬇';
+        dlBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          downloadFile('roteiro_' + jobBaseName(job) + '.md', buildMarkdown(job.generatedData, job.activeFields, job.languages), 'text/markdown;charset=utf-8');
+        });
+        row.appendChild(dlBtn);
+      }
+
+      queueList.appendChild(row);
+    });
+
+    queueDownloadAllBtn.disabled = doneCount === 0;
+    queuePendingBtn.disabled = queueActive;
+    updateRedoSelectedBtn();
+
+    var hasError = queueJobs.some(function (j) { return j.status === 'erro'; });
+    if (queueActive) {
+      queuePauseBtn.disabled = false;
+      queuePauseBtn.textContent = queuePaused ? (hasError ? '▶ Retomar (tentar de novo)' : '▶ Retomar') : '⏸ Pausar';
+    } else {
+      queuePauseBtn.disabled = true;
+      queuePauseBtn.textContent = '⏸ Pausar';
+    }
+  }
+
+  function updateRedoSelectedBtn() {
+    var count = queueJobs.filter(function (j) { return j.selectedForRedo; }).length;
+    queueRedoSelectedBtn.textContent = '🔄 Refazer selecionados (' + count + ')';
+    queueRedoSelectedBtn.disabled = count === 0 || queueActive;
+  }
+
+  function selectJobResult(jobId) {
+    var job = queueJobs.filter(function (j) { return j.id === jobId; })[0];
+    if (!job || job.status !== 'concluido') return;
+    activeResultJobId = jobId;
+    generatedData = job.generatedData;
+    generatedData.__activeFields = job.activeFields;
+    generatedData.__languages = job.languages || [];
+    resultViewingLabel.textContent = '— ' + job.file.name;
+    outputFilenameInput.value = jobBaseName(job);
+    renderEditTab();
+    updatePreview();
+    outputSection.style.display = 'block';
+    switchTab('edit');
+    renderQueue();
+  }
+
+  // Acrescenta à fila os arquivos de uploadedFiles que ainda não têm job (nunca mexe nos que já
+  // existem — resultados já concluídos ficam intactos). Retorna quantos foram adicionados.
+  function syncQueueJobsFromFiles() {
+    var added = 0;
+    uploadedFiles.forEach(function (file, idx) {
+      var exists = queueJobs.some(function (j) { return j.file === file; });
+      if (!exists) {
+        queueJobs.push({
+          id: 'job_' + idx + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          file: file, status: 'aguardando', generatedData: null, activeFields: null,
+          languages: null, errorMessage: null, customFilename: null, selectedForRedo: false
+        });
+        added++;
+      }
+    });
+    return added;
+  }
+
+  // Cria um job já "concluído" com todos os campos ativos vazios (no formato certo — por idioma,
+  // lista, etc.), sem chamar a IA nem precisar de um arquivo de origem. Pronto pra preencher à mão.
+  function createBlankJob() {
+    var activeFields = fields.filter(function (f) { return f.active; });
+
+    logEl.innerHTML = '';
+    progressCard.style.display = 'block';
+
+    if (activeFields.length === 0) {
+      log('ERRO: Nenhum campo está ativo. Ative ao menos um campo.', 'error');
+      return;
+    }
+
+    var languages = getSelectedLanguages();
+    var emptyData = normalizeGeneratedData({}, activeFields, languages);
+
+    var blankCount = queueJobs.filter(function (j) { return j.isBlank; }).length + 1;
+    var fileName = 'documento_em_branco_' + blankCount + '.txt';
+    var fakeFile = new File([''], fileName, { type: 'text/plain' });
+
+    var job = {
+      id: 'job_blank_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      file: fakeFile, status: 'concluido', generatedData: emptyData, activeFields: activeFields,
+      languages: languages, errorMessage: null, customFilename: null, selectedForRedo: false, isBlank: true
+    };
+    queueJobs.push(job);
+
+    log('Documento em branco criado: ' + fileName + '. Preencha os campos manualmente em "Editar Campos".', 'success');
+    renderQueue();
+    selectJobResult(job.id);
+  }
+
+  createBlankBtn.addEventListener('click', createBlankJob);
+
+  function runQueue() {
+    if (queueActive) {
+      log('AVISO: a fila já está em execução — aguarde terminar (ou pause) antes de iniciar de novo.', 'warn');
+      return;
+    }
+
+    var activeFields = fields.filter(function (f) { return f.active; });
+    var provider = providerSelect.value;
+    var apiKey = apiKeyInput.value.trim();
+
+    logEl.innerHTML = '';
+    progressCard.style.display = 'block';
+
+    if (uploadedFiles.length === 0) {
+      log('ERRO: Nenhum arquivo foi adicionado.', 'error');
+      return;
+    }
+    if (activeFields.length === 0) {
+      log('ERRO: Nenhum campo está ativo. Ative ao menos um campo.', 'error');
+      return;
+    }
+    if (!apiKey) {
+      log('ERRO: Informe e salve uma chave de API para ' + (provider === 'gemini' ? 'Gemini' : 'Groq') + '.', 'error');
+      return;
+    }
+
+    var addedCount = syncQueueJobsFromFiles();
+    var pendingCount = queueJobs.filter(function (j) { return j.status === 'aguardando'; }).length;
+
+    if (pendingCount === 0) {
+      log('Nenhum documento pendente — todos os arquivos adicionados já foram processados. Use "🔄" num item da fila se quiser refazer algum.', 'warn');
+      renderQueue();
+      return;
+    }
+
+    var languages = getSelectedLanguages();
+    log(languages.length > 0 ? 'Idiomas selecionados: ' + languages.join(', ') + '.' : 'Nenhum idioma selecionado — extraindo todos os idiomas encontrados.');
+    if (addedCount > 0) log(addedCount + ' documento(s) novo(s) adicionado(s) à fila.');
+    log(pendingCount + ' documento(s) pendente(s) — processando um de cada vez.');
+
+    queuePaused = false;
+    queueActive = true;
+    queueAutoRetryCount = 0;
+    cancelQueueAutoRetry();
+    processBtn.disabled = true;
+    processBtn.textContent = 'PROCESSANDO FILA...';
+    setOverallProgress(queueJobs.length - pendingCount, queueJobs.length);
+
+    renderQueue();
+    advanceQueue();
+  }
+
+  function resetJobToRedo(job) {
+    job.status = 'aguardando';
+    job.generatedData = null;
+    job.errorMessage = null;
+    job.selectedForRedo = false;
+    if (activeResultJobId === job.id) {
+      activeResultJobId = null;
+      outputSection.style.display = 'none';
+    }
+  }
+
+  function startRedoRun() {
+    queuePaused = false;
+    queueActive = true;
+    queueAutoRetryCount = 0;
+    cancelQueueAutoRetry();
+    processBtn.disabled = true;
+    processBtn.textContent = 'PROCESSANDO FILA...';
+    setOverallProgress(queueJobs.filter(function (j) { return j.status === 'concluido'; }).length, queueJobs.length);
+    renderQueue();
+    advanceQueue();
+  }
+
+  function redoJob(jobId) {
+    if (queueActive) {
+      log('AVISO: aguarde a fila atual terminar (ou pause) antes de refazer um item.', 'warn');
+      return;
+    }
+    var job = queueJobs.filter(function (j) { return j.id === jobId; })[0];
+    if (!job) return;
+
+    resetJobToRedo(job);
+    logEl.innerHTML = '';
+    progressCard.style.display = 'block';
+    log('Refazendo: ' + job.file.name);
+    startRedoRun();
+  }
+
+  function redoSelectedJobs() {
+    if (queueActive) {
+      log('AVISO: aguarde a fila atual terminar (ou pause) antes de refazer itens selecionados.', 'warn');
+      return;
+    }
+    var selected = queueJobs.filter(function (j) { return j.status === 'concluido' && j.selectedForRedo; });
+    if (selected.length === 0) {
+      log('Nenhum documento selecionado pra refazer.', 'warn');
+      return;
+    }
+
+    selected.forEach(function (job) { resetJobToRedo(job); });
+    logEl.innerHTML = '';
+    progressCard.style.display = 'block';
+    log('Refazendo ' + selected.length + ' documento(s) selecionado(s): ' + selected.map(function (j) { return j.file.name; }).join(', '));
+    startRedoRun();
+  }
+
+  var queueAutoRetryCount = 0;
+  var queueAutoRetryTimer = null;
+  var QUEUE_AUTO_RETRY_MAX = 5;
+  var QUEUE_AUTO_RETRY_DELAY_MS = 10000;
+
+  function cancelQueueAutoRetry() {
+    if (queueAutoRetryTimer) {
+      clearTimeout(queueAutoRetryTimer);
+      queueAutoRetryTimer = null;
+    }
+  }
+
+  // Quando a fila pausa por erro, tenta clicar em "Retomar" sozinho depois de 10s — até
+  // QUEUE_AUTO_RETRY_MAX vezes seguidas. Depois disso, desiste e deixa a decisão com o usuário.
+  function scheduleQueueAutoRetry() {
+    cancelQueueAutoRetry();
+    if (queueAutoRetryCount >= QUEUE_AUTO_RETRY_MAX) {
+      log('Já tentei de novo automaticamente ' + QUEUE_AUTO_RETRY_MAX + ' vezes sem sucesso — vou parar de tentar sozinho. Corrija o problema (ex: troque de chave ou aguarde a cota) e clique em "Retomar" quando quiser tentar de novo.', 'warn');
+      return;
+    }
+    queueAutoRetryCount++;
+    var attemptNum = queueAutoRetryCount;
+    log('Vou tentar de novo automaticamente em 10s (tentativa ' + attemptNum + ' de ' + QUEUE_AUTO_RETRY_MAX + ')...', 'warn');
+    queueAutoRetryTimer = setTimeout(function () {
+      queueAutoRetryTimer = null;
+      if (queuePaused && queueActive && queueJobs.some(function (j) { return j.status === 'erro'; })) {
+        log('Tentativa automática ' + attemptNum + ' de ' + QUEUE_AUTO_RETRY_MAX + ': clicando em Retomar...', 'warn');
+        queuePauseBtn.click();
+      }
+    }, QUEUE_AUTO_RETRY_DELAY_MS);
+  }
+
+  function advanceQueue() {
+    if (queuePaused) return;
+
+    var job = queueJobs.filter(function (j) { return j.status === 'aguardando'; })[0];
+    if (!job) {
+      queueActive = false;
+      processBtn.disabled = false;
+      processBtn.textContent = 'GERAR ROTEIROS';
+      log('Fila concluída.', 'success');
+      setOverallProgress(queueJobs.filter(function (j) { return j.status === 'concluido'; }).length, queueJobs.length);
+      renderQueue();
+      return;
+    }
+
+    var activeFields = fields.filter(function (f) { return f.active; });
+    var provider = providerSelect.value;
+    var apiKey = apiKeyInput.value.trim();
+    var apiKeys = getAllApiKeys(provider);
+    var model = modelInput.value.trim() || DEFAULT_MODELS[provider];
+    var languages = getSelectedLanguages();
+
+    job.status = 'processando';
+    renderQueue();
+    var jobIndex = queueJobs.indexOf(job);
+    var completedBefore = queueJobs.filter(function (j) { return j.status === 'concluido'; }).length;
+    log('Processando arquivo ' + (jobIndex + 1) + ' de ' + queueJobs.length + ': ' + job.file.name);
+    setOverallProgress(completedBefore, queueJobs.length);
+    setJobStepText(jobIndex, queueJobs.length, 'Lendo ' + job.file.name + '...');
+
+    processSingleFile(job.file, activeFields, provider, apiKey, apiKeys, model, languages, jobIndex, queueJobs.length)
+      .then(function (parsed) {
+        job.status = 'concluido';
+        job.generatedData = parsed;
+        job.activeFields = activeFields;
+        job.languages = languages;
+        job.errorMessage = null;
+        log(job.file.name + ': roteiro gerado com sucesso!', 'success');
+        queueAutoRetryCount = 0;
+        setOverallProgress(queueJobs.filter(function (j) { return j.status === 'concluido'; }).length, queueJobs.length);
+        renderQueue();
+        if (activeResultJobId === null) {
+          selectJobResult(job.id);
+        }
+        advanceQueue();
+      })
+      .catch(function (err) {
+        job.status = 'erro';
+        job.errorMessage = err.message;
+        log('ERRO em ' + job.file.name + ': ' + err.message, 'error');
+        console.error(err);
+        queuePaused = true;
+        progressStepText.textContent = 'Fila pausada por erro em "' + job.file.name + '". Veja o log e clique em Retomar quando resolver.';
+        renderQueue();
+        scheduleQueueAutoRetry();
+      });
+  }
+
+  queuePauseBtn.addEventListener('click', function () {
+    if (!queueActive) return;
+    if (queuePaused) {
+      cancelQueueAutoRetry();
+      var erroredJob = queueJobs.filter(function (j) { return j.status === 'erro'; })[0];
+      if (erroredJob) {
+        erroredJob.status = 'aguardando';
+        erroredJob.errorMessage = null;
+        log('Tentando novamente: ' + erroredJob.file.name);
+      }
+      queuePaused = false;
+      log('Fila retomada.');
+      renderQueue();
+      advanceQueue();
+    } else {
+      queuePaused = true;
+      log('Pausando a fila (termina o arquivo atual e para antes do próximo)...', 'warn');
+      renderQueue();
+    }
+  });
+
+  queueDownloadAllBtn.addEventListener('click', function () {
+    var doneJobs = queueJobs.filter(function (j) { return j.status === 'concluido'; });
+    doneJobs.forEach(function (job, i) {
+      setTimeout(function () {
+        downloadFile('roteiro_' + jobBaseName(job) + '.md', buildMarkdown(job.generatedData, job.activeFields, job.languages), 'text/markdown;charset=utf-8');
+      }, i * 350);
+    });
+  });
+
+  processBtn.addEventListener('click', runQueue);
+  queuePendingBtn.addEventListener('click', runQueue);
+  queueRedoSelectedBtn.addEventListener('click', redoSelectedJobs);
+
+  /* ---------- Saída: editar / pré-visualizar ---------- */
+
+  function getActiveFieldsSnapshot() {
+    return generatedData.__activeFields || fields.filter(function (f) { return f.active; });
+  }
+
+  function getActiveLanguagesSnapshot() {
+    return generatedData.__languages || getSelectedLanguages();
+  }
+
+  function isMultiLangValue(val) {
+    return val && typeof val === 'object' && !Array.isArray(val);
+  }
+
+  // Campos que a IA sempre retorna como array (mesmo com 1 item só), para tratamento consistente
+  // na extração/normalização. "descricao" é array só até ser sorteado (vira string simples depois);
+  // "youtube_tags" e campos com listMode:'numbered' continuam array até a exibição final.
+  function isListTypeField(f) {
+    return f.id === 'youtube_tags' || f.id === 'descricao' || f.listMode === 'numbered';
+  }
+
+  function formatNumberedList(items) {
+    return items.map(function (item, i) { return (i + 1) + '. ' + item; }).join('\n\n');
+  }
+
+  // Junta qualquer sequência de quebras de linha/espaços em um espaço só, deixando o texto numa
+  // única linha contínua (ideal pra colar em geradores de imagem/vídeo).
+  function toSingleLine(text) {
+    return String(text).replace(/\s*\n+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
+  }
+
+  // Aplica toSingleLine em qualquer formato de valor: string simples, array de strings, objeto
+  // por idioma (com string ou array dentro) — usado pelos campos marcados singleLine:true.
+  function normalizeSingleLineValue(val) {
+    if (typeof val === 'string') return toSingleLine(val);
+    if (Array.isArray(val)) {
+      return val.map(function (v) { return typeof v === 'string' ? toSingleLine(v) : v; });
+    }
+    if (val && typeof val === 'object') {
+      var out = {};
+      Object.keys(val).forEach(function (k) { out[k] = normalizeSingleLineValue(val[k]); });
+      return out;
+    }
+    return val;
+  }
+
+  function parseNumberedList(text) {
+    return text.split(/\n\s*\n+/).map(function (piece) {
+      return piece.replace(/^\s*\d+\.\s*/, '').trim();
+    }).filter(function (s) { return s.length > 0; });
+  }
+
+  function formatArrayForEdit(arr, isNumbered) {
+    if (!Array.isArray(arr)) return '';
+    return isNumbered ? formatNumberedList(arr) : arr.join(', ');
+  }
+
+  function parseArrayFromEdit(text, isNumbered) {
+    if (isNumbered) return parseNumberedList(text);
+    return text.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+  }
+
+  // Se, na prática, só UM dos idiomas selecionados voltou com conteúdo pra este campo (documento
+  // de origem não era realmente multilíngue nesse campo), trata como campo simples — sem rótulo de
+  // idioma nenhum. Não muda o que é pedido à IA, só a forma de EXIBIR o que já veio com segurança.
+  function getFlattenedLangIfSingle(byLang, jobLanguages, isArrayField) {
+    var nonEmptyLangs = jobLanguages.filter(function (lang) {
+      var v = byLang[lang];
+      return isArrayField ? (Array.isArray(v) && v.length > 0) : !!(v && String(v).trim());
+    });
+    if (nonEmptyLangs.length <= 1) {
+      var lang = nonEmptyLangs[0] || jobLanguages[0];
+      return { flat: true, lang: lang, value: byLang[lang] };
+    }
+    return { flat: false };
+  }
+
+  function renderEditTab() {
+    editFieldsContainer.innerHTML = '';
+    var activeFields = getActiveFieldsSnapshot();
+    var jobLanguages = getActiveLanguagesSnapshot();
+    var multiLang = jobLanguages.length > 0;
+
+    activeFields.forEach(function (f) {
+      var isNumbered = f.listMode === 'numbered';
+      var isArray = f.id === 'youtube_tags' || isNumbered;
+      var rawVal = Object.prototype.hasOwnProperty.call(generatedData, f.id) ? generatedData[f.id] : '';
+
+      var block = document.createElement('div');
+      block.className = 'edit-field-block';
+
+      var labelEl = document.createElement('label');
+      labelEl.className = 'edit-field-label';
+      labelEl.textContent = f.label + (isNumbered ? ' (um por parágrafo — numerado automaticamente)' : isArray ? ' (separe por vírgula)' : '');
+      block.appendChild(labelEl);
+
+      if (multiLang && !f.noLangSplit) {
+        var byLang = isMultiLangValue(rawVal) ? rawVal : {};
+        // Só tenta "achatar" (esconder rótulo) quando há MAIS DE UM idioma selecionado e o
+        // conteúdo convergiu pra um só — com exatamente 1 idioma selecionado, o rótulo sempre
+        // aparece, mantendo o mesmo padrão usado com vários idiomas.
+        var flatCheck = jobLanguages.length > 1 ? getFlattenedLangIfSingle(byLang, jobLanguages, isArray) : { flat: false };
+
+        if (flatCheck.flat) {
+          // Só um dos idiomas selecionados tinha conteúdo pra este campo: mostra sem rótulo de
+          // idioma, mas a edição continua gravando na sub-chave certa do objeto por idioma.
+          var flatVal = flatCheck.value;
+          var textareaFlat = document.createElement('textarea');
+          textareaFlat.className = 'edit-field-textarea';
+          textareaFlat.rows = isNumbered ? 10 : isArray ? 2 : 5;
+          textareaFlat.setAttribute('data-id', f.id);
+          textareaFlat.setAttribute('data-lang', flatCheck.lang);
+          textareaFlat.setAttribute('data-array', isArray ? 'true' : 'false');
+          textareaFlat.setAttribute('data-numbered', isNumbered ? 'true' : 'false');
+          textareaFlat.setAttribute('data-singleline', f.singleLine ? 'true' : 'false');
+          textareaFlat.value = isArray ? formatArrayForEdit(flatVal, isNumbered) : (flatVal || '');
+          textareaFlat.addEventListener('input', onEditFieldInputMultiLang);
+          block.appendChild(textareaFlat);
+        } else {
+          jobLanguages.forEach(function (lang) {
+            var langVal = byLang[lang];
+
+            var langLabel = document.createElement('div');
+            langLabel.className = 'edit-field-lang-label';
+            langLabel.textContent = displayLangName(lang) + ':';
+
+            var textarea = document.createElement('textarea');
+            textarea.className = 'edit-field-textarea edit-field-textarea-lang';
+            textarea.rows = isNumbered ? 10 : isArray ? 2 : 4;
+            textarea.setAttribute('data-id', f.id);
+            textarea.setAttribute('data-lang', lang);
+            textarea.setAttribute('data-array', isArray ? 'true' : 'false');
+            textarea.setAttribute('data-numbered', isNumbered ? 'true' : 'false');
+            textarea.setAttribute('data-singleline', f.singleLine ? 'true' : 'false');
+            textarea.value = isArray ? formatArrayForEdit(langVal, isNumbered) : (langVal || '');
+            textarea.addEventListener('input', onEditFieldInputMultiLang);
+
+            block.appendChild(langLabel);
+            block.appendChild(textarea);
+          });
+        }
+      } else {
+        var textarea2 = document.createElement('textarea');
+        textarea2.className = 'edit-field-textarea';
+        textarea2.rows = isNumbered ? 10 : isArray ? 2 : 5;
+        textarea2.setAttribute('data-id', f.id);
+        textarea2.setAttribute('data-array', isArray ? 'true' : 'false');
+        textarea2.setAttribute('data-numbered', isNumbered ? 'true' : 'false');
+        textarea2.setAttribute('data-singleline', f.singleLine ? 'true' : 'false');
+        textarea2.value = isArray ? formatArrayForEdit(rawVal, isNumbered) : (rawVal || '');
+        textarea2.addEventListener('input', onEditFieldInput);
+        block.appendChild(textarea2);
+      }
+
+      editFieldsContainer.appendChild(block);
+    });
+  }
+
+  function onEditFieldInput(e) {
+    var id = e.target.getAttribute('data-id');
+    var isArray = e.target.getAttribute('data-array') === 'true';
+    var isNumbered = e.target.getAttribute('data-numbered') === 'true';
+    var singleLine = e.target.getAttribute('data-singleline') === 'true';
+    var value = e.target.value;
+    var parsedVal = isArray ? parseArrayFromEdit(value, isNumbered) : value;
+    if (singleLine) {
+      parsedVal = isArray ? parsedVal.map(toSingleLine) : toSingleLine(parsedVal);
+    }
+    generatedData[id] = parsedVal;
+    updatePreview();
+  }
+
+  function onEditFieldInputMultiLang(e) {
+    var id = e.target.getAttribute('data-id');
+    var lang = e.target.getAttribute('data-lang');
+    var isArray = e.target.getAttribute('data-array') === 'true';
+    var isNumbered = e.target.getAttribute('data-numbered') === 'true';
+    var singleLine = e.target.getAttribute('data-singleline') === 'true';
+    var value = e.target.value;
+    var parsedVal = isArray ? parseArrayFromEdit(value, isNumbered) : value;
+    if (singleLine) {
+      parsedVal = isArray ? parsedVal.map(toSingleLine) : toSingleLine(parsedVal);
+    }
+    if (!isMultiLangValue(generatedData[id])) {
+      generatedData[id] = {};
+    }
+    generatedData[id][lang] = parsedVal;
+    updatePreview();
+  }
+
+  function buildMarkdown(dataOverride, fieldsOverride, languagesOverride) {
+    var data = dataOverride || generatedData;
+    var activeFields = fieldsOverride || getActiveFieldsSnapshot();
+    var jobLanguages = languagesOverride || getActiveLanguagesSnapshot();
+    var multiLang = jobLanguages.length > 0;
+    var now = new Date();
+    var md = '# Roteiro Padronizado\n\n';
+    md += '_Gerado em ' + now.toLocaleString('pt-BR') + '_\n\n---\n\n';
+    activeFields.forEach(function (f) {
+      md += '## ' + f.label + '\n\n';
+      var val = data[f.id];
+      var isNumbered = f.listMode === 'numbered';
+      var isArrayField = f.id === 'youtube_tags' || isNumbered;
+      var emptyListMsg = isNumbered ? '_Nenhum prompt encontrado._' : '_Nenhuma tag gerada._';
+      if (multiLang && isMultiLangValue(val)) {
+        // Só tenta "achatar" quando há mais de 1 idioma selecionado e o conteúdo convergiu pra
+        // um só — com exatamente 1 idioma selecionado, o rótulo sempre aparece.
+        var flatCheck = jobLanguages.length > 1 ? getFlattenedLangIfSingle(val, jobLanguages, isArrayField) : { flat: false };
+        if (flatCheck.flat) {
+          var flatVal = flatCheck.value;
+          if (Array.isArray(flatVal)) {
+            md += (flatVal.length ? (isNumbered ? formatNumberedList(flatVal) : flatVal.join(', ')) : emptyListMsg) + '\n\n';
+          } else {
+            md += ((flatVal && String(flatVal).trim()) ? flatVal : '_Vazio._') + '\n\n';
+          }
+        } else {
+          jobLanguages.forEach(function (lang) {
+            var langVal = val[lang];
+            if (Array.isArray(langVal)) {
+              md += displayLangName(lang) + ':' + (isNumbered ? '\n\n' + (langVal.length ? formatNumberedList(langVal) : '_vazio_') : ' ' + (langVal.length ? langVal.join(', ') : '_vazio_'));
+            } else {
+              md += displayLangName(lang) + ': ' + ((langVal && String(langVal).trim()) ? langVal : '_vazio_');
+            }
+            md += '\n\n';
+          });
+        }
+      } else if (Array.isArray(val)) {
+        md += (val.length ? (isNumbered ? formatNumberedList(val) : val.map(function (t) { return '- ' + t; }).join('\n')) : emptyListMsg) + '\n\n';
+      } else {
+        md += ((val && String(val).trim()) ? val : '_Vazio._') + '\n\n';
+      }
+    });
+    return md;
+  }
+
+  function updatePreview() {
+    previewPre.textContent = buildMarkdown();
+  }
+
+  function switchTab(tab) {
+    if (tab === 'edit') {
+      tabEditBtn.classList.add('active');
+      tabPreviewBtn.classList.remove('active');
+      editPanel.style.display = 'block';
+      previewPanel.style.display = 'none';
+    } else {
+      tabPreviewBtn.classList.add('active');
+      tabEditBtn.classList.remove('active');
+      previewPanel.style.display = 'block';
+      editPanel.style.display = 'none';
+      updatePreview();
+    }
+  }
+
+  tabEditBtn.addEventListener('click', function () { switchTab('edit'); });
+  tabPreviewBtn.addEventListener('click', function () { switchTab('preview'); });
+
+  /* ---------- Downloads ---------- */
+
+  function timestamp() {
+    var d = new Date();
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  }
+
+  function sanitizeFilename(name) {
+    var base = name.replace(/\.[^/.]+$/, '');
+    base = base.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9_\-]+/g, '_').replace(/^_+|_+$/g, '');
+    return (base || 'roteiro').slice(0, 60);
+  }
+
+  function jobBaseName(job) {
+    return job.customFilename ? sanitizeFilename(job.customFilename) : sanitizeFilename(job.file.name);
+  }
+
+  function downloadFile(filename, content, mime) {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function currentDownloadBaseName() {
+    var typed = outputFilenameInput.value.trim();
+    if (typed) return sanitizeFilename(typed);
+    var job = activeResultJobId ? queueJobs.filter(function (j) { return j.id === activeResultJobId; })[0] : null;
+    return job ? sanitizeFilename(job.file.name) : 'roteiro_' + timestamp();
+  }
+
+  outputFilenameInput.addEventListener('input', function () {
+    var job = activeResultJobId ? queueJobs.filter(function (j) { return j.id === activeResultJobId; })[0] : null;
+    if (job) job.customFilename = outputFilenameInput.value.trim();
+  });
+
+  downloadMdBtn.addEventListener('click', function () {
+    downloadFile('roteiro_' + currentDownloadBaseName() + '.md', buildMarkdown(), 'text/markdown;charset=utf-8');
+  });
+
+  downloadTxtBtn.addEventListener('click', function () {
+    downloadFile('roteiro_' + currentDownloadBaseName() + '.txt', buildMarkdown(), 'text/plain;charset=utf-8');
+  });
+
+  // Snapshot do HTML exatamente como foi carregado (arquivo em disco), tirado ANTES de qualquer
+  // interação do usuário — é isso que o botão "Salvar Backup no GitHub" envia. Não usamos o DOM no
+  // momento do clique porque, depois de horas de uso, ele acumula estado de sessão (fila processada,
+  // linhas de log, campos editados) que não deveria virar "código-fonte" salvo no repositório.
+  // Importante: para o backup refletir uma edição nova, dê um F5 na página antes de clicar no botão.
+  var PRISTINE_SOURCE_SNAPSHOT = '<!doctype html>\n' + document.documentElement.outerHTML;
+
+})();
+</script>
+</body>
+</html>
