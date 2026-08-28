@@ -8,6 +8,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<!-- Opcional: crie um "config.local.js" (veja config.local.example.js) na mesma pasta pra
+     pré-preencher suas chaves neste computador. Se o arquivo não existir, isso aqui simplesmente
+     falha em silêncio e o app funciona normalmente. Esse arquivo nunca é commitado nem enviado
+     pelo backup do GitHub. -->
+<script src="config.local.js" onerror="void 0"></script>
 <style>
   :root {
     --bg: #0d0f14;
@@ -1321,6 +1326,21 @@
   });
 
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+  /* ---------- Configuração local opcional (não sincroniza com o GitHub) ---------- */
+  // Se existir um arquivo "config.local.js" na mesma pasta (você mesmo cria, a partir do
+  // config.local.example.js), ele preenche window.ROTEIRO_LOCAL_CONFIG antes daqui. Usamos os
+  // valores dele só pra PRÉ-PREENCHER chaves que ainda não foram salvas neste navegador — nunca
+  // sobrescreve o que você já configurou. Esse arquivo é ignorado pelo git (.gitignore) e NUNCA é
+  // incluído no snapshot que o botão "Salvar Backup no GitHub" envia (esse botão só lê o HTML da
+  // página, nunca arquivos irmãos) — então sua chave real nunca vai parar num repositório público.
+  (function seedLocalConfig() {
+    var cfg = window.ROTEIRO_LOCAL_CONFIG;
+    if (!cfg) return;
+    if (cfg.geminiKey && !localStorage.getItem('roteiro_key_gemini')) localStorage.setItem('roteiro_key_gemini', cfg.geminiKey);
+    if (cfg.groqKey && !localStorage.getItem('roteiro_key_groq')) localStorage.setItem('roteiro_key_groq', cfg.groqKey);
+    if (cfg.githubToken && !localStorage.getItem('roteiro_github_token')) localStorage.setItem('roteiro_github_token', cfg.githubToken);
+  })();
 
   /* ---------- Chaves de API ---------- */
 

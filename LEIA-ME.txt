@@ -1,28 +1,19 @@
-GERADOR DE ROTEIROS PADRONIZADOS — Versão portátil
-=====================================================
+GERADOR DE ROTEIROS PADRONIZADOS — passo a passo (máquina nova)
+==================================================================
 
-COMO USAR EM QUALQUER COMPUTADOR
----------------------------------
-1. Extraia esta pasta inteira em qualquer lugar do computador (pen drive, Desktop, OneDrive, etc.).
-2. Dê 2 cliques em "Abrir e Atualizar.bat".
-   - Ele busca a versão mais recente salva no GitHub, atualiza o arquivo local automaticamente
-     e abre o app no seu navegador — sem precisar instalar nada, sem Python, sem servidor.
-   - Se não houver internet no momento, ele abre a versão local que já está na pasta.
-3. Se o Windows mostrar um aviso azul do SmartScreen ("Windows protegeu o computador"),
-   clique em "Mais informações" → "Executar assim mesmo". Isso acontece com qualquer
-   script novo baixado da internet, é só a primeira vez.
+1. Extraia esta pasta inteira em qualquer lugar (pen drive, Desktop, OneDrive...).
+2. Dê 2 cliques em "Abrir e Atualizar.exe".
+3. Se aparecer o aviso azul do Windows ("protegeu seu computador"): clique em
+   "Mais informações" → "Executar assim mesmo". Só acontece na 1ª vez.
+4. Pronto — o app abre já na versão mais recente.
 
-SALVANDO SUAS EDIÇÕES DE VOLTA NO GITHUB
-------------------------------------------
-Dentro do app, no topo da página, tem o botão "💾 Salvar Backup no GitHub". Para ele funcionar,
-configure uma única vez (por computador) um token pessoal do GitHub na caixinha
-"🐙 BACKUP NO GITHUB", também no topo da página. O token fica salvo só no seu navegador.
+OPCIONAL — configurar a IA e o backup
+----------------------------------------
+Configure Gemini/Groq e (se quiser) o token de backup direto nas caixinhas no topo da página.
+Ficam salvos só neste navegador.
 
-Repositório do app: https://github.com/JAEMult/Gerador-de-roteiros-padronizados
+Quer que já venham preenchidos sem digitar de novo? Copie "config.local.example.js", renomeie
+pra "config.local.js", preencha suas chaves — nunca vai pro GitHub, e se usar em outro PC é só
+copiar esse arquivo manualmente.
 
-ARQUIVOS DESTA PASTA
-----------------------
-- Gerador de Roteiros Padronizados.html   → o app em si (pode abrir direto, sem o launcher,
-                                             mas aí não busca atualização automática).
-- Abrir e Atualizar.bat                   → clique aqui para abrir sempre a versão mais recente.
-- _atualizar.ps1                          → script usado pelo launcher (não precisa mexer).
+Repositório: https://github.com/JAEMult/Gerador-de-roteiros-padronizados

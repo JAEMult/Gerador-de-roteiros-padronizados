@@ -1,3 +1,6 @@
 _atualizacao_temp.html
 Thumbs.db
 desktop.ini
+
+# Chaves reais do usuário — nunca deve ir pro repositório público nem pro backup.
+config.local.js
