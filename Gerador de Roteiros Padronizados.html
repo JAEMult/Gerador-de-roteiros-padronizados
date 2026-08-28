@@ -1440,6 +1440,7 @@
       removeBtn.title = 'Remover chave alternativa';
       removeBtn.textContent = '✕';
       removeBtn.addEventListener('click', function () {
+        if (!confirm('Tem certeza que quer apagar essa chave alternativa? Não tem como desfazer nem recuperar depois.')) return;
         var current = getAltKeys(provider);
         current.splice(idx, 1);
         saveAltKeys(provider, current);
@@ -1498,6 +1499,7 @@
   });
 
   clearKeyBtn.addEventListener('click', function () {
+    if (!confirm('Tem certeza que quer apagar a chave salva? Não tem como desfazer nem recuperar depois.')) return;
     var provider = providerSelect.value;
     localStorage.removeItem('roteiro_key_' + provider);
     apiKeyInput.value = '';
@@ -1720,6 +1722,7 @@
   });
 
   clearGithubTokenBtn.addEventListener('click', function () {
+    if (!confirm('Tem certeza que quer apagar o token salvo? Não tem como desfazer nem recuperar depois.')) return;
     localStorage.removeItem(GITHUB_TOKEN_KEY);
     githubTokenInput.value = '';
     updateGithubConfigSummary();
