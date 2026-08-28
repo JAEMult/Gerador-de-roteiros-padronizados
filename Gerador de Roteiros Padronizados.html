@@ -1031,26 +1031,6 @@
   </header>
 
   <div class="card ai-config-card">
-    <div class="fields-card-header" id="githubConfigHeader">
-      <h2>🐙 BACKUP NO GITHUB <span class="fields-count-badge" id="githubConfigSummary"></span></h2>
-      <button class="chevron-btn" id="githubConfigCollapseBtn" type="button" aria-expanded="true">▾</button>
-    </div>
-    <div id="githubConfigBody">
-      <p class="field-caption">
-        Cole aqui seu token do GitHub (permissão apenas de leitura/escrita no repositório
-        <strong>Gerador-de-roteiros-padronizados</strong>) para poder usar o botão "Salvar Backup no GitHub" acima.
-        O token fica salvo só neste navegador, nunca é enviado a nenhum outro lugar.
-      </p>
-      <div class="api-row">
-        <input type="password" id="githubTokenInput" class="field-full-width" placeholder="Cole seu token do GitHub aqui (github_pat_...)">
-        <button class="btn btn-accent" id="saveGithubTokenBtn" type="button">Salvar token</button>
-        <button class="btn btn-outline" id="clearGithubTokenBtn" type="button">Limpar token</button>
-      </div>
-      <p class="field-caption" id="githubBackupStatusEl"></p>
-    </div>
-  </div>
-
-  <div class="card ai-config-card">
     <div class="fields-card-header" id="aiConfigHeader">
       <h2>⚙ CONFIGURAÇÃO DA IA <span class="fields-count-badge" id="aiConfigSummary"></span></h2>
       <button class="chevron-btn" id="aiConfigCollapseBtn" type="button" aria-expanded="true">▾</button>
@@ -1086,6 +1066,27 @@
         Chave grátis do Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>
       </div>
       <p class="hint-text">Documentos grandes ou com vários idiomas costumam ultrapassar o limite gratuito do Groq (12.000 tokens/minuto). Para esses casos, prefira o Gemini, que tem um limite bem maior. Se a IA recusar o modelo por estar desatualizado, confira o nome atual em <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener noreferrer">ai.google.dev/gemini-api/docs/models</a> (Gemini) ou <a href="https://console.groq.com/docs/models" target="_blank" rel="noopener noreferrer">console.groq.com/docs/models</a> (Groq) e cole o nome certo no campo Modelo acima.</p>
+    </div>
+  </div>
+
+  <div class="card ai-config-card">
+    <div class="fields-card-header" id="githubConfigHeader">
+      <h2>🐙 BACKUP NO GITHUB <span class="fields-count-badge" id="githubConfigSummary"></span></h2>
+      <button class="chevron-btn" id="githubConfigCollapseBtn" type="button" aria-expanded="false">▸</button>
+    </div>
+    <div id="githubConfigBody">
+      <p class="field-caption">
+        Opcional — só necessário se você for usar o botão "Salvar Backup no GitHub" no topo da página.
+        Abrir e atualizar o app não precisa de nada disso. Cole aqui um token do GitHub (permissão de
+        leitura/escrita só no repositório <strong>Gerador-de-roteiros-padronizados</strong>); fica salvo
+        apenas neste navegador.
+      </p>
+      <div class="api-row">
+        <input type="password" id="githubTokenInput" class="field-full-width" placeholder="Cole seu token do GitHub aqui (github_pat_...)">
+        <button class="btn btn-accent" id="saveGithubTokenBtn" type="button">Salvar token</button>
+        <button class="btn btn-outline" id="clearGithubTokenBtn" type="button">Limpar token</button>
+      </div>
+      <p class="field-caption" id="githubBackupStatusEl"></p>
     </div>
   </div>
 
@@ -1684,10 +1685,11 @@
     log('Token do GitHub removido deste navegador.', 'warn');
   });
 
-  // Padrão inteligente igual ao da Configuração da IA: começa fechada se já tem token salvo.
+  // Diferente da Configuração da IA (obrigatória pra usar o app), o backup no GitHub é opcional —
+  // então essa caixa começa SEMPRE fechada (só uma linha), pra não poluir a tela à toa. Só abre
+  // sozinha se o usuário clicar em "Salvar Backup" sem token configurado ainda.
   var githubConfigStoredPref = localStorage.getItem(GITHUB_CONFIG_COLLAPSE_KEY);
-  var githubHasToken = !!localStorage.getItem(GITHUB_TOKEN_KEY);
-  applyGithubConfigCollapse(githubConfigStoredPref !== null ? githubConfigStoredPref === '1' : githubHasToken);
+  applyGithubConfigCollapse(githubConfigStoredPref !== null ? githubConfigStoredPref === '1' : true);
   updateGithubConfigSummary();
 
   // Converte texto (com acentos/emoji) pra Base64 sem usar a função depreciada `unescape`,
