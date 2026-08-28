@@ -308,6 +308,11 @@
     align-items: center;
   }
 
+  .btn-reveal {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+  }
+
   .api-row select {
     min-width: 200px;
   }
@@ -1047,6 +1052,7 @@
           <option value="groq">Groq</option>
         </select>
         <input type="password" id="apiKeyInput" placeholder="Cole sua chave de API aqui">
+        <button class="btn btn-outline btn-reveal" id="toggleApiKeyBtn" type="button" title="Mostrar/ocultar chave">👁</button>
         <button class="btn btn-accent" id="saveKeyBtn" type="button">Salvar chave</button>
         <button class="btn btn-outline" id="clearKeyBtn" type="button">Limpar chave</button>
       </div>
@@ -1088,6 +1094,7 @@
       </p>
       <div class="api-row">
         <input type="password" id="githubTokenInput" class="field-full-width" placeholder="Cole seu token do GitHub aqui (github_pat_...)">
+        <button class="btn btn-outline btn-reveal" id="toggleGithubTokenBtn" type="button" title="Mostrar/ocultar token">👁</button>
         <button class="btn btn-accent" id="saveGithubTokenBtn" type="button">Salvar token</button>
         <button class="btn btn-outline" id="clearGithubTokenBtn" type="button">Limpar token</button>
       </div>
@@ -1240,6 +1247,7 @@
   var themeToggleBtn = document.getElementById('themeToggleBtn');
   var providerSelect = document.getElementById('providerSelect');
   var apiKeyInput = document.getElementById('apiKeyInput');
+  var toggleApiKeyBtn = document.getElementById('toggleApiKeyBtn');
   var modelInput = document.getElementById('modelInput');
   var saveKeyBtn = document.getElementById('saveKeyBtn');
   var clearKeyBtn = document.getElementById('clearKeyBtn');
@@ -1266,6 +1274,7 @@
   var githubConfigCollapseBtn = document.getElementById('githubConfigCollapseBtn');
   var githubConfigSummary = document.getElementById('githubConfigSummary');
   var githubTokenInput = document.getElementById('githubTokenInput');
+  var toggleGithubTokenBtn = document.getElementById('toggleGithubTokenBtn');
   var saveGithubTokenBtn = document.getElementById('saveGithubTokenBtn');
   var clearGithubTokenBtn = document.getElementById('clearGithubTokenBtn');
   var githubBackupStatusEl = document.getElementById('githubBackupStatusEl');
@@ -1326,6 +1335,18 @@
   });
 
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+  // Botão "👁" genérico pra revelar/ocultar o conteúdo de um campo tipo senha — usado na chave de
+  // API e no token do GitHub, pra quem esqueceu o que já salvou poder conferir sem abrir o DevTools.
+  function wireRevealToggle(input, btn) {
+    btn.addEventListener('click', function () {
+      var revealing = input.type === 'password';
+      input.type = revealing ? 'text' : 'password';
+      btn.textContent = revealing ? '🙈' : '👁';
+    });
+  }
+  wireRevealToggle(apiKeyInput, toggleApiKeyBtn);
+  wireRevealToggle(githubTokenInput, toggleGithubTokenBtn);
 
   /* ---------- Configuração local opcional (não sincroniza com o GitHub) ---------- */
   // Se existir um arquivo "config.local.js" na mesma pasta (você mesmo cria, a partir do
