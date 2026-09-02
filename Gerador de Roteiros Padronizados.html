@@ -570,16 +570,71 @@
     font-size: 12.5px;
   }
 
-  .ai-config-card .fields-card-header h2 {
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+
+  .modal-overlay[hidden] {
+    display: none;
+  }
+
+  .modal-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 660px;
+    max-height: calc(100vh - 96px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .modal-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+  }
+
+  .modal-panel-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .modal-close-btn {
+    font-size: 18px;
+    padding: 4px 8px;
+  }
+
+  .modal-panel-body {
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .modal-section + .modal-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .modal-section h3 {
+    margin: 0 0 16px 0;
     font-size: 14px;
-  }
-
-  .ai-config-card .fields-card-header {
-    margin-bottom: 0;
-  }
-
-  .ai-config-card #aiConfigBody {
-    margin-top: 20px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
   }
 
   .fields-count-badge {
@@ -1035,70 +1090,73 @@
       <p>Envie planilhas ou arquivos de texto e deixe uma IA extrair narração, prompts e demais campos sempre no mesmo formato.</p>
     </div>
     <div class="header-actions">
+      <button class="btn btn-outline" id="settingsBtn" type="button">⚙ Configurações</button>
       <button class="btn btn-accent" id="githubBackupBtn" type="button">💾 Salvar Backup no GitHub</button>
       <button id="themeToggleBtn" type="button">Tema</button>
     </div>
   </header>
 
-  <div class="card ai-config-card">
-    <div class="fields-card-header" id="aiConfigHeader">
-      <h2>⚙ CONFIGURAÇÃO DA IA <span class="fields-count-badge" id="aiConfigSummary"></span></h2>
-      <button class="chevron-btn" id="aiConfigCollapseBtn" type="button" aria-expanded="true">▾</button>
-    </div>
-    <div id="aiConfigBody">
-      <div class="api-row">
-        <select id="providerSelect">
-          <option value="gemini">Gemini (Google)</option>
-          <option value="groq">Groq</option>
-        </select>
-        <input type="password" id="apiKeyInput" placeholder="Cole sua chave de API aqui">
-        <button class="btn btn-outline btn-reveal" id="toggleApiKeyBtn" type="button" title="Mostrar/ocultar chave">👁</button>
-        <button class="btn btn-accent" id="saveKeyBtn" type="button">Salvar chave</button>
-        <button class="btn btn-outline" id="clearKeyBtn" type="button">Limpar chave</button>
+  <div class="modal-overlay" id="settingsModalOverlay" hidden>
+    <div class="modal-panel">
+      <div class="modal-panel-header">
+        <h2>⚙ Configurações</h2>
+        <button class="chevron-btn modal-close-btn" id="settingsModalCloseBtn" type="button" title="Fechar">✕</button>
       </div>
-      <div class="model-row">
-        <label class="field-caption" for="modelInput">Modelo (edite se a IA parar de aceitar o atual)</label>
-        <input type="text" id="modelInput" class="field-full-width" placeholder="ID do modelo">
-      </div>
-      <span class="key-status" id="keyStatusEl">Nenhuma chave salva.</span>
-      <span class="key-status" id="bothKeysStatusEl"></span>
+      <div class="modal-panel-body">
 
-      <div class="alt-keys-block">
-        <label class="field-caption">Chaves alternativas (usadas automaticamente se a cota da principal acabar)</label>
-        <div id="altKeysList"></div>
-        <div class="alt-key-add-row">
-          <input type="password" id="newAltKeyInput" class="field-full-width" placeholder="Cole outra chave de API aqui">
-          <button class="btn btn-outline" id="addAltKeyBtn" type="button">+ Adicionar chave alternativa</button>
+        <div class="modal-section">
+          <h3>⚙ Configuração da IA <span class="fields-count-badge" id="aiConfigSummary"></span></h3>
+          <div class="api-row">
+            <select id="providerSelect">
+              <option value="gemini">Gemini (Google)</option>
+              <option value="groq">Groq</option>
+            </select>
+            <input type="password" id="apiKeyInput" placeholder="Cole sua chave de API aqui">
+            <button class="btn btn-outline btn-reveal" id="toggleApiKeyBtn" type="button" title="Mostrar/ocultar chave">👁</button>
+            <button class="btn btn-accent" id="saveKeyBtn" type="button">Salvar chave</button>
+            <button class="btn btn-outline" id="clearKeyBtn" type="button">Limpar chave</button>
+          </div>
+          <div class="model-row">
+            <label class="field-caption" for="modelInput">Modelo (edite se a IA parar de aceitar o atual)</label>
+            <input type="text" id="modelInput" class="field-full-width" placeholder="ID do modelo">
+          </div>
+          <span class="key-status" id="keyStatusEl">Nenhuma chave salva.</span>
+          <span class="key-status" id="bothKeysStatusEl"></span>
+
+          <div class="alt-keys-block">
+            <label class="field-caption">Chaves alternativas (usadas automaticamente se a cota da principal acabar)</label>
+            <div id="altKeysList"></div>
+            <div class="alt-key-add-row">
+              <input type="password" id="newAltKeyInput" class="field-full-width" placeholder="Cole outra chave de API aqui">
+              <button class="btn btn-outline" id="addAltKeyBtn" type="button">+ Adicionar chave alternativa</button>
+            </div>
+          </div>
+          <div class="key-hint">
+            Sua chave fica salva apenas neste navegador (localStorage) e é usada somente para chamar a API do provedor escolhido. A última IA, chave e modelo usados ficam salvos como padrão.
+            Chave grátis do Gemini: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> —
+            Chave grátis do Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>
+          </div>
+          <p class="hint-text">Documentos grandes ou com vários idiomas costumam ultrapassar o limite gratuito do Groq (12.000 tokens/minuto). Para esses casos, prefira o Gemini, que tem um limite bem maior. Se a IA recusar o modelo por estar desatualizado, confira o nome atual em <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener noreferrer">ai.google.dev/gemini-api/docs/models</a> (Gemini) ou <a href="https://console.groq.com/docs/models" target="_blank" rel="noopener noreferrer">console.groq.com/docs/models</a> (Groq) e cole o nome certo no campo Modelo acima.</p>
         </div>
-      </div>
-      <div class="key-hint">
-        Sua chave fica salva apenas neste navegador (localStorage) e é usada somente para chamar a API do provedor escolhido. A última IA, chave e modelo usados ficam salvos como padrão.
-        Chave grátis do Gemini: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> —
-        Chave grátis do Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>
-      </div>
-      <p class="hint-text">Documentos grandes ou com vários idiomas costumam ultrapassar o limite gratuito do Groq (12.000 tokens/minuto). Para esses casos, prefira o Gemini, que tem um limite bem maior. Se a IA recusar o modelo por estar desatualizado, confira o nome atual em <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener noreferrer">ai.google.dev/gemini-api/docs/models</a> (Gemini) ou <a href="https://console.groq.com/docs/models" target="_blank" rel="noopener noreferrer">console.groq.com/docs/models</a> (Groq) e cole o nome certo no campo Modelo acima.</p>
-    </div>
-  </div>
 
-  <div class="card ai-config-card">
-    <div class="fields-card-header" id="githubConfigHeader">
-      <h2>🐙 BACKUP NO GITHUB <span class="fields-count-badge" id="githubConfigSummary"></span></h2>
-      <button class="chevron-btn" id="githubConfigCollapseBtn" type="button" aria-expanded="false">▸</button>
-    </div>
-    <div id="githubConfigBody">
-      <p class="field-caption">
-        Opcional — só necessário se você for usar o botão "Salvar Backup no GitHub" no topo da página.
-        Abrir e atualizar o app não precisa de nada disso. Cole aqui um token do GitHub (permissão de
-        leitura/escrita só no repositório <strong>Gerador-de-roteiros-padronizados</strong>); fica salvo
-        apenas neste navegador.
-      </p>
-      <div class="api-row">
-        <input type="password" id="githubTokenInput" class="field-full-width" placeholder="Cole seu token do GitHub aqui (github_pat_...)">
-        <button class="btn btn-outline btn-reveal" id="toggleGithubTokenBtn" type="button" title="Mostrar/ocultar token">👁</button>
-        <button class="btn btn-accent" id="saveGithubTokenBtn" type="button">Salvar token</button>
-        <button class="btn btn-outline" id="clearGithubTokenBtn" type="button">Limpar token</button>
+        <div class="modal-section">
+          <h3>🐙 Backup no GitHub <span class="fields-count-badge" id="githubConfigSummary"></span></h3>
+          <p class="field-caption">
+            Opcional — só necessário se você for usar o botão "Salvar Backup no GitHub" no topo da página.
+            Abrir e atualizar o app não precisa de nada disso. Cole aqui um token do GitHub (permissão de
+            leitura/escrita só no repositório <strong>Gerador-de-roteiros-padronizados</strong>); fica salvo
+            apenas neste navegador.
+          </p>
+          <div class="api-row">
+            <input type="password" id="githubTokenInput" class="field-full-width" placeholder="Cole seu token do GitHub aqui (github_pat_...)">
+            <button class="btn btn-outline btn-reveal" id="toggleGithubTokenBtn" type="button" title="Mostrar/ocultar token">👁</button>
+            <button class="btn btn-accent" id="saveGithubTokenBtn" type="button">Salvar token</button>
+            <button class="btn btn-outline" id="clearGithubTokenBtn" type="button">Limpar token</button>
+          </div>
+          <p class="field-caption" id="githubBackupStatusEl"></p>
+        </div>
+
       </div>
-      <p class="field-caption" id="githubBackupStatusEl"></p>
     </div>
   </div>
 
@@ -1210,7 +1268,6 @@
           <hr class="queue-controls-divider">
           <button class="btn btn-accent" id="queueDownloadAllBtn" type="button" disabled>⬇ Baixar todos (.md)</button>
         </div>
-        <p class="hint-text">Os arquivos são processados um de cada vez. Se um der erro, a fila pausa automaticamente — corrija (ex: troque de chave) e clique em Retomar. Marque a caixinha dos itens concluídos que quiser refazer e clique em "Refazer selecionados". "Gerar pendentes" processa só os arquivos novos, sem repetir os já feitos. Clique num item concluído para ver/editar o resultado dele.</p>
       </div>
     </aside>
   </div>
@@ -1263,15 +1320,12 @@
   var fieldsCardBody = document.getElementById('fieldsCardBody');
   var fieldsCollapseBtn = document.getElementById('fieldsCollapseBtn');
 
-  var aiConfigHeader = document.getElementById('aiConfigHeader');
-  var aiConfigBody = document.getElementById('aiConfigBody');
-  var aiConfigCollapseBtn = document.getElementById('aiConfigCollapseBtn');
+  var settingsBtn = document.getElementById('settingsBtn');
+  var settingsModalOverlay = document.getElementById('settingsModalOverlay');
+  var settingsModalCloseBtn = document.getElementById('settingsModalCloseBtn');
   var aiConfigSummary = document.getElementById('aiConfigSummary');
 
   var githubBackupBtn = document.getElementById('githubBackupBtn');
-  var githubConfigHeader = document.getElementById('githubConfigHeader');
-  var githubConfigBody = document.getElementById('githubConfigBody');
-  var githubConfigCollapseBtn = document.getElementById('githubConfigCollapseBtn');
   var githubConfigSummary = document.getElementById('githubConfigSummary');
   var githubTokenInput = document.getElementById('githubTokenInput');
   var toggleGithubTokenBtn = document.getElementById('toggleGithubTokenBtn');
@@ -1646,25 +1700,24 @@
 
   applyFieldsCollapse(localStorage.getItem(FIELDS_COLLAPSE_KEY) === '1');
 
-  var AI_CONFIG_COLLAPSE_KEY = 'roteiro_ai_config_collapsed';
-
-  function applyAiConfigCollapse(collapsed) {
-    aiConfigBody.style.display = collapsed ? 'none' : 'block';
-    aiConfigCollapseBtn.textContent = collapsed ? '▸' : '▾';
-    aiConfigCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  // Configuração da IA e Backup no GitHub ficam escondidas atrás de um botão só ("⚙ Configurações"),
+  // que abre as duas num popup — evita poluir a tela principal com caixas que raramente mudam.
+  function openSettingsModal() {
+    settingsModalOverlay.hidden = false;
   }
 
-  aiConfigHeader.addEventListener('click', function () {
-    var collapsed = aiConfigBody.style.display !== 'none';
-    applyAiConfigCollapse(collapsed);
-    localStorage.setItem(AI_CONFIG_COLLAPSE_KEY, collapsed ? '1' : '0');
-  });
+  function closeSettingsModal() {
+    settingsModalOverlay.hidden = true;
+  }
 
-  // Padrão inteligente: se já existe alguma chave salva (uso de retorno), começa fechada
-  // (raramente precisa mexer); se é a primeira vez, começa aberta pra guiar a configuração.
-  var aiConfigStoredPref = localStorage.getItem(AI_CONFIG_COLLAPSE_KEY);
-  var aiConfigHasAnyKey = !!(localStorage.getItem('roteiro_key_gemini') || localStorage.getItem('roteiro_key_groq'));
-  applyAiConfigCollapse(aiConfigStoredPref !== null ? aiConfigStoredPref === '1' : aiConfigHasAnyKey);
+  settingsBtn.addEventListener('click', openSettingsModal);
+  settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
+  settingsModalOverlay.addEventListener('click', function (e) {
+    if (e.target === settingsModalOverlay) closeSettingsModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !settingsModalOverlay.hidden) closeSettingsModal();
+  });
 
   /* ---------- Backup no GitHub ---------- */
   // O botão "Salvar Backup no GitHub" grava o próprio arquivo do app no repositório
@@ -1678,24 +1731,6 @@
   var GITHUB_FILE_PATH = 'Gerador de Roteiros Padronizados.html';
   var GITHUB_TOKEN_KEY = 'roteiro_github_token';
   var GITHUB_LAST_BACKUP_KEY = 'roteiro_github_last_backup';
-  var GITHUB_CONFIG_COLLAPSE_KEY = 'roteiro_github_config_collapsed';
-
-  function applyGithubConfigCollapse(collapsed) {
-    githubConfigBody.style.display = collapsed ? 'none' : 'block';
-    githubConfigCollapseBtn.textContent = collapsed ? '▸' : '▾';
-    githubConfigCollapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-  }
-
-  function expandGithubConfig() {
-    applyGithubConfigCollapse(false);
-    localStorage.setItem(GITHUB_CONFIG_COLLAPSE_KEY, '0');
-  }
-
-  githubConfigHeader.addEventListener('click', function () {
-    var collapsed = githubConfigBody.style.display !== 'none';
-    applyGithubConfigCollapse(collapsed);
-    localStorage.setItem(GITHUB_CONFIG_COLLAPSE_KEY, collapsed ? '1' : '0');
-  });
 
   function updateGithubConfigSummary() {
     var hasToken = !!localStorage.getItem(GITHUB_TOKEN_KEY);
@@ -1729,11 +1764,6 @@
     log('Token do GitHub removido deste navegador.', 'warn');
   });
 
-  // Diferente da Configuração da IA (obrigatória pra usar o app), o backup no GitHub é opcional —
-  // então essa caixa começa SEMPRE fechada (só uma linha), pra não poluir a tela à toa. Só abre
-  // sozinha se o usuário clicar em "Salvar Backup" sem token configurado ainda.
-  var githubConfigStoredPref = localStorage.getItem(GITHUB_CONFIG_COLLAPSE_KEY);
-  applyGithubConfigCollapse(githubConfigStoredPref !== null ? githubConfigStoredPref === '1' : true);
   updateGithubConfigSummary();
 
   // Converte texto (com acentos/emoji) pra Base64 sem usar a função depreciada `unescape`,
@@ -1751,8 +1781,8 @@
   function pushBackupToGithub() {
     var token = localStorage.getItem(GITHUB_TOKEN_KEY);
     if (!token) {
-      log('Configure seu token do GitHub antes de salvar o backup (caixa "Backup no GitHub" no topo da página).', 'error');
-      expandGithubConfig();
+      log('Configure seu token do GitHub antes de salvar o backup (clique em "⚙ Configurações" no topo da página).', 'error');
+      openSettingsModal();
       githubTokenInput.focus();
       return;
     }
