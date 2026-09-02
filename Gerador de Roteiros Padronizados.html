@@ -2814,6 +2814,15 @@
     renderQueue();
   }
 
+  // Mantém a fila sempre em ordem alfabética (por nome do arquivo de origem) — tanto na exibição
+  // quanto na ordem de processamento, já que advanceQueue() sempre pega o primeiro "aguardando"
+  // do array. Ordenação natural (numeric:true) pra "EP2" vir antes de "EP10", não depois.
+  function sortQueueJobsAlphabetically() {
+    queueJobs.sort(function (a, b) {
+      return a.file.name.localeCompare(b.file.name, 'pt-BR', { numeric: true, sensitivity: 'base' });
+    });
+  }
+
   // Acrescenta à fila os arquivos de uploadedFiles que ainda não têm job (nunca mexe nos que já
   // existem — resultados já concluídos ficam intactos). Retorna quantos foram adicionados.
   function syncQueueJobsFromFiles() {
@@ -2829,6 +2838,7 @@
         added++;
       }
     });
+    if (added > 0) sortQueueJobsAlphabetically();
     return added;
   }
 
@@ -2858,6 +2868,7 @@
       languages: languages, errorMessage: null, customFilename: null, selectedForRedo: false, isBlank: true
     };
     queueJobs.push(job);
+    sortQueueJobsAlphabetically();
 
     log('Documento em branco criado: ' + fileName + '. Preencha os campos manualmente em "Editar Campos".', 'success');
     renderQueue();
