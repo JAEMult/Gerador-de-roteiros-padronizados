@@ -964,6 +964,12 @@
 
   .edit-field-block {
     margin-bottom: 18px;
+    padding-left: 10px;
+    border-left: 3px solid transparent;
+  }
+
+  .edit-field-block-empty {
+    border-left-color: var(--warning);
   }
 
   .edit-field-label {
@@ -974,6 +980,15 @@
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: .04em;
+  }
+
+  .edit-field-empty-badge {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--warning);
+    margin-left: 8px;
   }
 
   .edit-field-lang-label {
@@ -2649,9 +2664,30 @@
 
         normalizeGeneratedData(parsed, activeFields, languages);
 
+        var emptyFieldLabels = activeFields.filter(function (f) {
+          return isValueEmpty(parsed[f.id]);
+        }).map(function (f) { return f.label; });
+        if (emptyFieldLabels.length > 0) {
+          log('⚠ Campo(s) NÃO encontrado(s) neste documento: ' + emptyFieldLabels.join(', ') + '. Confira/preencha manualmente em "Editar Campos".', 'warn');
+        } else {
+          log('Todos os campos ativos foram encontrados no documento.', 'success');
+        }
+
         progress('Concluído!');
         return parsed;
       });
+  }
+
+  // Considera "vazio" string em branco, array sem itens, ou objeto (valor por idioma) cujos
+  // idiomas estão TODOS vazios — usado tanto pra avisar no log quanto pra marcar visualmente o
+  // campo em "Editar Campos", sem precisar saber de antemão se o campo é lista/flat/por idioma.
+  function isValueEmpty(value) {
+    if (value === null || value === undefined) return true;
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === 'object') {
+      return Object.keys(value).every(function (k) { return isValueEmpty(value[k]); });
+    }
+    return !String(value).trim();
   }
 
   // Preenche/normaliza `parsed` pra ter exatamente o formato esperado (objeto por idioma quando
@@ -3235,6 +3271,16 @@
       labelEl.className = 'edit-field-label';
       labelEl.textContent = f.label + (isNumbered ? ' (um por parágrafo — numerado automaticamente)' : isArray ? ' (separe por vírgula)' : '');
       block.appendChild(labelEl);
+
+      // Documento em branco: tudo começa vazio por design, marcar cada campo seria só ruído.
+      // Fora isso, campo vazio = a IA não achou essa informação no documento — deixa visível.
+      if (!isBlankJob && isValueEmpty(rawVal)) {
+        var emptyBadge = document.createElement('span');
+        emptyBadge.className = 'edit-field-empty-badge';
+        emptyBadge.textContent = '⚠ não encontrado';
+        labelEl.appendChild(emptyBadge);
+        block.classList.add('edit-field-block-empty');
+      }
 
       if (multiLang && !f.noLangSplit) {
         var byLang = isMultiLangValue(rawVal) ? rawVal : {};
