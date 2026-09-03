@@ -3346,6 +3346,27 @@
     });
   }
 
+  // Atualiza o selo/borda de "não encontrado" no campo em tempo real, conforme o usuário digita
+  // — sem re-renderizar a aba inteira (isso apagaria o textarea e perderia o foco/cursor no meio
+  // da digitação). Pega o bloco a partir do próprio campo editado, então funciona tanto pro
+  // textarea único quanto pra qualquer um dos textareas por idioma do mesmo campo.
+  function refreshFieldEmptyMarker(targetEl, fieldId) {
+    var block = targetEl.closest('.edit-field-block');
+    if (!block) return;
+    var isEmpty = isValueEmpty(generatedData[fieldId]);
+    block.classList.toggle('edit-field-block-empty', isEmpty);
+    var labelEl = block.querySelector('.edit-field-label');
+    var badge = labelEl ? labelEl.querySelector('.edit-field-empty-badge') : null;
+    if (isEmpty && !badge) {
+      badge = document.createElement('span');
+      badge.className = 'edit-field-empty-badge';
+      badge.textContent = '⚠ não encontrado';
+      labelEl.appendChild(badge);
+    } else if (!isEmpty && badge) {
+      badge.remove();
+    }
+  }
+
   function onEditFieldInput(e) {
     var id = e.target.getAttribute('data-id');
     var isArray = e.target.getAttribute('data-array') === 'true';
@@ -3357,6 +3378,7 @@
       parsedVal = isArray ? parsedVal.map(toSingleLine) : toSingleLine(parsedVal);
     }
     generatedData[id] = parsedVal;
+    refreshFieldEmptyMarker(e.target, id);
     updatePreview();
   }
 
@@ -3375,6 +3397,7 @@
       generatedData[id] = {};
     }
     generatedData[id][lang] = parsedVal;
+    refreshFieldEmptyMarker(e.target, id);
     updatePreview();
   }
 
