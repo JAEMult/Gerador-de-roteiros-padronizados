@@ -1334,7 +1334,7 @@
     { id: 'titulo', label: 'Título', desc: 'Copie LITERALMENTE o texto que aparece sob um cabeçalho chamado "Título"/"Title" dentro da seção do idioma correto — na íntegra, sem cortar, resumir ou encurtar, incluindo subtítulos e separadores (hífen, "|", "·") até o fim da linha. NÃO use campos de metadados gerais do topo do documento (ex: "Série", nome do arquivo) mesmo que pareçam parecidos — não são o título.', active: true },
     { id: 'descricao', label: 'Descrição', desc: 'Extraia a(s) opção(ões) de descrição do vídeo (para a caixa de descrição do YouTube/redes sociais) como um ARRAY de strings — um elemento por opção encontrada no documento (ex: "Opção A", "Opção B"...); se houver só uma descrição, retorne um array com um único elemento mesmo assim. Em CADA elemento do array, cole ao final o texto de HASHTAGS do documento (procure uma seção ou linha chamada "Hashtags", separada ou logo após a descrição) — as mesmas hashtags em todos os elementos, com uma linha em branco separando a descrição das hashtags. Copie tudo literalmente, sem resumir. Se o documento não tiver hashtags, não invente nenhuma. Considere apenas os idiomas selecionados.', active: true },
     { id: 'prompt_personagens', label: 'Prompt de Personagens', desc: 'Extraia os prompts de referência visual de personagens (ex: "character model sheet", "anchor prompt", ficha com idade/aparência/roupa), copiados literalmente, um bloco por personagem incluindo o nome dele. Se o documento NÃO tiver nenhuma seção/tabela específica de personagens, retorne string vazia — NUNCA componha um prompt de personagem a partir de outras descrições (thumbnail, cenas, etc.).', active: true, noLangSplit: true, singleLine: true },
-    { id: 'narracao', label: 'Narração', desc: 'Copie LITERALMENTE o texto INTEGRAL de narração/locução (voz off / TTS) na ordem correta das cenas ou blocos, sem resumir, preservando marcações de performance entre colchetes como [empathetic], [thoughtful], [whispering] quando existirem. Considere apenas os idiomas selecionados; se mais de um, separe e rotule claramente o texto de cada idioma.', active: true },
+    { id: 'narracao', label: 'Narração', desc: 'Copie LITERALMENTE o texto INTEGRAL de narração/locução (voz off / TTS) na ordem correta das cenas ou blocos, sem resumir, preservando marcações de performance entre colchetes como [empathetic], [thoughtful], [whispering] quando existirem. ATENÇÃO — em alguns documentos NÃO existe uma seção separada chamada "Narração": a fala de cada cena vem embutida no próprio título da cena dentro da seção Visual, no formato "NÚMERO / TIMESTAMP | texto" (ex: "01 / 00:00–00:06 | Buscar lucro não é, por si só, algo impuro."). Nesse caso, extraia SOMENTE o texto depois do último "|" de cada título de cena — NUNCA inclua o número da cena nem o intervalo de tempo (00:00–00:06 etc.) no resultado — e junte as falas de todas as cenas em sequência, na ordem, formando a narração completa como texto corrido. Considere apenas os idiomas selecionados; se mais de um, separe e rotule claramente o texto de cada idioma.', active: true },
     { id: 'texto_tela', label: 'Texto na Tela', desc: 'Extraia o TEXTO QUE APARECE ESCRITO NA TELA durante o vídeo — pode estar rotulado de formas diferentes conforme o documento (ex: "Texto na Tela", "On-Screen Text", "Legenda", "Caption", "Texto de Tela", ou numa coluna separada por cena) — geralmente uma frase curta e direta por cena/momento, DIFERENTE da narração falada (que é o texto completo da locução, em outro campo). Extraia como um ARRAY de strings, um elemento por cena/momento, na ordem em que aparecem no documento, copiado literalmente (não resuma nem reescreva, não misture com a narração mesmo que apareçam lado a lado). Se o documento não tiver esse texto de tela separado da narração, retorne um array vazio — não invente. Considere apenas os idiomas selecionados.', active: true, listMode: 'numbered' },
     { id: 'prompt_imagem_video', label: 'Prompt de Imagem/Vídeo', desc: 'Extraia TODOS os prompts de geração de conteúdo visual por IA para cada cena — sejam eles para IMAGEM ESTÁTICA (uma única imagem) ou para VÍDEO (clipe com movimento de câmera/ação/duração, ex: prompts para Veo, Runway, Kling) — como um ARRAY de strings, um elemento por prompt, copiado literalmente e por inteiro (não resuma), na ordem em que aparecem no documento. NÃO separe por tipo — junte imagem e vídeo na mesma lista, na ordem do documento. NÃO inclua nomes de arquivos de vídeo/imagem de banco de estoque já prontos (ex: "arquivo.mp4") — isso não é prompt de geração por IA. Se não houver nenhum prompt de geração visual no documento, retorne um array vazio.', active: true, noLangSplit: true, listMode: 'numbered', singleLine: true },
     { id: 'prompt_thumbnail', label: 'Prompt de Thumbnail', desc: 'Copie LITERALMENTE o(s) prompt(s) de geração de imagem da thumbnail/miniatura por inteiro, incluindo todos os detalhes técnicos (proporção, zonas de texto, paleta de cores, overlay) — não resuma em uma frase curta. Se houver um prompt por idioma, inclua apenas os dos idiomas selecionados, rotulando claramente qual prompt pertence a qual idioma.', active: true, singleLine: true },
@@ -2813,6 +2813,15 @@
       }
     });
 
+    // Documentos mais novos não têm mais uma seção "Narração" separada — a fala de cada cena vem
+    // embutida no título da própria cena visual, formato "01 / 00:00–00:06 | texto da fala". O
+    // prompt já pede pra IA extrair só o texto (sem número/timestamp), mas isso é só uma instrução
+    // — não é garantido. Por segurança, limpamos qualquer resquício desse prefixo aqui no código
+    // também, pra nunca deixar passar "01 / 00:00–00:06 |" pro resultado final.
+    if (Object.prototype.hasOwnProperty.call(parsed, 'narracao')) {
+      parsed.narracao = stripSceneNumberPrefixDeep(parsed.narracao);
+    }
+
     // "descricao" chega como uma LISTA de opções (uma por variação encontrada no documento,
     // já com as hashtags coladas). Aqui sorteamos UMA opção de verdade (Math.random, não a IA
     // "decidindo" — isso é mais confiável) e a transformamos num valor simples, igual aos outros
@@ -3292,6 +3301,24 @@
     if (val && typeof val === 'object') {
       var out = {};
       Object.keys(val).forEach(function (k) { out[k] = normalizeSingleLineValue(val[k]); });
+      return out;
+    }
+    return val;
+  }
+
+  // Remove prefixos de "NÚMERO / TIMESTAMP–TIMESTAMP | " (ex: "01 / 00:00–00:06 | ") do início de
+  // qualquer linha — resquício de documentos onde a narração vem embutida no título de cada cena
+  // visual. Rede de segurança determinística pro campo Narração (ver comentário em
+  // normalizeGeneratedData); aceita hífen normal ou travessão entre os horários.
+  var SCENE_NUMBER_PREFIX_RE = /^\s*\d{1,3}\s*\/\s*\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2}\s*\|\s*/gm;
+  function stripSceneNumberPrefix(text) {
+    return String(text).replace(SCENE_NUMBER_PREFIX_RE, '');
+  }
+  function stripSceneNumberPrefixDeep(val) {
+    if (typeof val === 'string') return stripSceneNumberPrefix(val);
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      var out = {};
+      Object.keys(val).forEach(function (k) { out[k] = stripSceneNumberPrefixDeep(val[k]); });
       return out;
     }
     return val;
