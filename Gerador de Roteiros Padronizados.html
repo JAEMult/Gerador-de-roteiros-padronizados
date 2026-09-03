@@ -3244,9 +3244,12 @@
       var v = byLang[lang];
       return isArrayField ? (Array.isArray(v) && v.length > 0) : !!(v && String(v).trim());
     });
-    if (nonEmptyLangs.length <= 1) {
-      var lang = nonEmptyLangs[0] || jobLanguages[0];
-      return { flat: true, lang: lang, value: byLang[lang] };
+    // Só achata quando EXATAMENTE 1 idioma tem conteúdo de verdade (convergência real). Com 0
+    // idiomas com conteúdo (a IA não achou em nenhum), não há idioma nenhum pra "escolher" —
+    // mostrar 1 caixa só ali esconderia os outros idiomas e não haveria como preencher cada um
+    // separadamente. Nesse caso mantém uma caixa por idioma, mesmo todas vazias.
+    if (nonEmptyLangs.length === 1) {
+      return { flat: true, lang: nonEmptyLangs[0], value: byLang[nonEmptyLangs[0]] };
     }
     return { flat: false };
   }
