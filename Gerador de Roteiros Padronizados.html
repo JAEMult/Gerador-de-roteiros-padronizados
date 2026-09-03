@@ -73,7 +73,7 @@
   }
 
   .container {
-    max-width: 1360px;
+    max-width: 1800px;
     margin: 0 auto;
   }
 
@@ -84,10 +84,12 @@
   }
 
   .sidebar {
-    width: 300px;
+    width: 340px;
     flex-shrink: 0;
     position: sticky;
     top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
   }
 
   .main-col {
@@ -423,14 +425,44 @@
 
   /* Campos padronizados */
   .field-row {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    background: var(--bg-elevated-2);
+    overflow: hidden;
+  }
+
+  /* Linha resumo, sempre visível: switch + nome do campo + chevron + remover. Clique nela expande
+     os detalhes (nome editável, descrição, opções) — assim dá pra ver/ligar-desligar todos os
+     campos numa lista compacta, sem precisar rolar a tela pra achar o que quer. */
+  .field-row-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .field-row-summary:hover {
+    background: var(--bg-elevated);
+  }
+
+  .field-row-label {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 13.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .field-row-details {
     display: flex;
     align-items: flex-start;
     gap: 14px;
-    padding: 14px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin-bottom: 10px;
-    background: var(--bg-elevated-2);
+    padding: 0 12px 14px 12px;
   }
 
   .field-info {
@@ -661,10 +693,14 @@
     padding: 18px;
   }
 
-  .sidebar .field-row {
-    padding: 10px;
+  .sidebar .field-row-summary {
+    padding: 9px 10px;
     gap: 10px;
-    margin-bottom: 8px;
+  }
+
+  .sidebar .field-row-details {
+    padding: 0 10px 12px 10px;
+    gap: 10px;
   }
 
   .sidebar .field-label-input {
@@ -1082,7 +1118,7 @@
       white-space: normal;
     }
 
-    .field-row {
+    .field-row-details {
       flex-direction: column;
     }
 
@@ -1611,6 +1647,13 @@
       row.className = 'field-row';
       row.setAttribute('data-id', f.id);
 
+      // Linha resumo (switch + nome + chevron) sempre visível; os detalhes (nome editável,
+      // descrição, opções) ficam escondidos até o usuário clicar — evita ter que rolar a tela
+      // inteira só pra ver/ligar-desligar campos. Fechado por padrão, sempre (estado é só de UI,
+      // não é salvo — `fields` é reconstruído do zero a cada carregamento da página).
+      var summary = document.createElement('div');
+      summary.className = 'field-row-summary';
+
       var switchLabel = document.createElement('label');
       switchLabel.className = 'switch';
       var checkbox = document.createElement('input');
@@ -1618,11 +1661,50 @@
       checkbox.checked = f.active;
       checkbox.addEventListener('change', function () {
         f.active = checkbox.checked;
+        updateFieldsCountBadge();
       });
       var slider = document.createElement('span');
       slider.className = 'slider';
       switchLabel.appendChild(checkbox);
       switchLabel.appendChild(slider);
+      switchLabel.addEventListener('click', function (e) { e.stopPropagation(); });
+
+      var summaryLabel = document.createElement('span');
+      summaryLabel.className = 'field-row-label';
+      summaryLabel.textContent = f.label;
+
+      var chevronBtn = document.createElement('button');
+      chevronBtn.className = 'chevron-btn';
+      chevronBtn.type = 'button';
+      chevronBtn.textContent = '▸';
+      chevronBtn.setAttribute('aria-expanded', 'false');
+
+      var summaryRemoveBtn = document.createElement('button');
+      summaryRemoveBtn.className = 'btn-icon-remove';
+      summaryRemoveBtn.type = 'button';
+      summaryRemoveBtn.title = 'Remover campo';
+      summaryRemoveBtn.textContent = '✕';
+      summaryRemoveBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        fields = fields.filter(function (x) { return x.id !== f.id; });
+        renderFieldsConfig();
+      });
+
+      summary.appendChild(switchLabel);
+      summary.appendChild(summaryLabel);
+      summary.appendChild(chevronBtn);
+      summary.appendChild(summaryRemoveBtn);
+
+      var details = document.createElement('div');
+      details.className = 'field-row-details';
+      details.style.display = 'none';
+
+      summary.addEventListener('click', function () {
+        var collapsed = details.style.display === 'none';
+        details.style.display = collapsed ? 'flex' : 'none';
+        chevronBtn.textContent = collapsed ? '▾' : '▸';
+        chevronBtn.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+      });
 
       var info = document.createElement('div');
       info.className = 'field-info';
@@ -1637,6 +1719,7 @@
       labelInput.value = f.label;
       labelInput.addEventListener('input', function () {
         f.label = labelInput.value;
+        summaryLabel.textContent = f.label || '(sem nome)';
       });
 
       var descInput = document.createElement('textarea');
@@ -1678,23 +1761,17 @@
       info.appendChild(descInput);
       info.appendChild(noLangSplitRow);
       info.appendChild(singleLineRow);
+      details.appendChild(info);
 
-      var removeBtn = document.createElement('button');
-      removeBtn.className = 'btn-icon-remove';
-      removeBtn.type = 'button';
-      removeBtn.title = 'Remover campo';
-      removeBtn.textContent = '✕';
-      removeBtn.addEventListener('click', function () {
-        fields = fields.filter(function (x) { return x.id !== f.id; });
-        renderFieldsConfig();
-      });
-
-      row.appendChild(switchLabel);
-      row.appendChild(info);
-      row.appendChild(removeBtn);
+      row.appendChild(summary);
+      row.appendChild(details);
       fieldsContainer.appendChild(row);
     });
 
+    updateFieldsCountBadge();
+  }
+
+  function updateFieldsCountBadge() {
     var activeCount = fields.filter(function (f) { return f.active; }).length;
     fieldsCountBadge.textContent = activeCount + '/' + fields.length + ' ativos';
   }
