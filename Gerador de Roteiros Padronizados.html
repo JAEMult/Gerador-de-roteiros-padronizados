@@ -2800,7 +2800,7 @@
         dlBtn.textContent = '⬇';
         dlBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          downloadFile('roteiro_' + jobBaseName(job) + '.md', buildMarkdown(job.generatedData, job.activeFields, job.languages), 'text/markdown;charset=utf-8');
+          downloadFile('roteiro_' + jobBaseName(job) + '.md', buildMarkdown(job.generatedData, job.activeFields, job.languages, job.isBlank), 'text/markdown;charset=utf-8');
         });
         row.appendChild(dlBtn);
       }
@@ -3129,7 +3129,7 @@
     var doneJobs = queueJobs.filter(function (j) { return j.status === 'concluido'; });
     doneJobs.forEach(function (job, i) {
       setTimeout(function () {
-        downloadFile('roteiro_' + jobBaseName(job) + '.md', buildMarkdown(job.generatedData, job.activeFields, job.languages), 'text/markdown;charset=utf-8');
+        downloadFile('roteiro_' + jobBaseName(job) + '.md', buildMarkdown(job.generatedData, job.activeFields, job.languages, job.isBlank), 'text/markdown;charset=utf-8');
       }, i * 350);
     });
   });
@@ -3220,6 +3220,8 @@
     var activeFields = getActiveFieldsSnapshot();
     var jobLanguages = getActiveLanguagesSnapshot();
     var multiLang = jobLanguages.length > 0;
+    var currentJob = activeResultJobId ? queueJobs.filter(function (j) { return j.id === activeResultJobId; })[0] : null;
+    var isBlankJob = !!(currentJob && currentJob.isBlank);
 
     activeFields.forEach(function (f) {
       var isNumbered = f.listMode === 'numbered';
@@ -3238,8 +3240,10 @@
         var byLang = isMultiLangValue(rawVal) ? rawVal : {};
         // Só tenta "achatar" (esconder rótulo) quando há MAIS DE UM idioma selecionado e o
         // conteúdo convergiu pra um só — com exatamente 1 idioma selecionado, o rótulo sempre
-        // aparece, mantendo o mesmo padrão usado com vários idiomas.
-        var flatCheck = jobLanguages.length > 1 ? getFlattenedLangIfSingle(byLang, jobLanguages, isArray) : { flat: false };
+        // aparece, mantendo o mesmo padrão usado com vários idiomas. Documento em branco nunca
+        // achata: tudo começa vazio em todo idioma, então "convergiu pra 0 idiomas com conteúdo"
+        // não deve virar "1 campo só" — o usuário precisa de uma caixa por idioma pra preencher.
+        var flatCheck = (jobLanguages.length > 1 && !isBlankJob) ? getFlattenedLangIfSingle(byLang, jobLanguages, isArray) : { flat: false };
 
         if (flatCheck.flat) {
           // Só um dos idiomas selecionados tinha conteúdo pra este campo: mostra sem rótulo de
@@ -3328,11 +3332,15 @@
     updatePreview();
   }
 
-  function buildMarkdown(dataOverride, fieldsOverride, languagesOverride) {
+  function buildMarkdown(dataOverride, fieldsOverride, languagesOverride, isBlankOverride) {
     var data = dataOverride || generatedData;
     var activeFields = fieldsOverride || getActiveFieldsSnapshot();
     var jobLanguages = languagesOverride || getActiveLanguagesSnapshot();
     var multiLang = jobLanguages.length > 0;
+    var isBlankJob = isBlankOverride !== undefined ? isBlankOverride : (function () {
+      var job = activeResultJobId ? queueJobs.filter(function (j) { return j.id === activeResultJobId; })[0] : null;
+      return !!(job && job.isBlank);
+    })();
     var now = new Date();
     var md = '# Roteiro Padronizado\n\n';
     md += '_Gerado em ' + now.toLocaleString('pt-BR') + '_\n\n---\n\n';
@@ -3344,8 +3352,9 @@
       var emptyListMsg = isNumbered ? '_Nenhum prompt encontrado._' : '_Nenhuma tag gerada._';
       if (multiLang && isMultiLangValue(val)) {
         // Só tenta "achatar" quando há mais de 1 idioma selecionado e o conteúdo convergiu pra
-        // um só — com exatamente 1 idioma selecionado, o rótulo sempre aparece.
-        var flatCheck = jobLanguages.length > 1 ? getFlattenedLangIfSingle(val, jobLanguages, isArrayField) : { flat: false };
+        // um só — com exatamente 1 idioma selecionado, o rótulo sempre aparece. Documento em
+        // branco nunca achata (ver mesmo comentário em renderEditTab).
+        var flatCheck = (jobLanguages.length > 1 && !isBlankJob) ? getFlattenedLangIfSingle(val, jobLanguages, isArrayField) : { flat: false };
         if (flatCheck.flat) {
           var flatVal = flatCheck.value;
           if (Array.isArray(flatVal)) {
